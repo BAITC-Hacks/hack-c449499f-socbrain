@@ -6,7 +6,7 @@
 <title>Поручения · SOCBrain</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body data-page="tasks">
 
 <nav class="side">
   <div class="brand">SOCBrain<small>автопротоколирование совещаний</small></div>
@@ -28,18 +28,14 @@
   <h1>Поручения</h1>
   <p class="sub">Сквозной список по всем совещаниям. Из "Дополнительно" в ТЗ — статусы в работе / просрочено / выполнено.</p>
 
-  <div class="cards" style="margin-bottom:20px">
-    <div class="card"><div class="n">27</div><div class="l">в работе</div></div>
-    <div class="card danger"><div class="n">4</div><div class="l">просрочено</div></div>
-    <div class="card ok"><div class="n">41</div><div class="l">выполнено</div></div>
-  </div>
+  <div class="cards" style="margin-bottom:20px" id="cards"></div>
 
-  <form method="get" class="filters">
+  <form method="get" class="filters" id="filters">
     <div><label>ответственный</label><input type="text" name="who" placeholder="имя"></div>
     <div><label>статус</label>
       <select name="status">
         <option value="">любой</option>
-        <option value="progress">в работе</option>
+        <option value="in_progress">в работе</option>
         <option value="overdue">просрочено</option>
         <option value="done">выполнено</option>
       </select>
@@ -48,63 +44,10 @@
     <div><button type="submit">Найти</button></div>
   </form>
 
-  <div class="scroll">
-  <table>
-    <tr><th class="wrap">Поручение</th><th>Ответственный</th><th>Срок</th><th>Статус</th><th class="wrap">Совещание</th></tr>
-    <tr>
-      <td class="wrap">Разобраться с подрядчиком-нарушителем, доложить лично</td>
-      <td>Гульмира Сериковна</td>
-      <td>Пятница</td>
-      <td><span class="tag bad">просрочено</span></td>
-      <td class="wrap"><a href="meeting.html">Химическая промышленность и ТБ</a></td>
-    </tr>
-    <tr>
-      <td class="wrap">Согласовать график поставок с проектным институтом</td>
-      <td>Айнур Каировна</td>
-      <td>26 сентября</td>
-      <td><span class="tag warn">срок завтра</span></td>
-      <td class="wrap"><a href="meeting.html">Химическая промышленность и ТБ</a></td>
-    </tr>
-    <tr>
-      <td class="wrap">Разработать единую стратегию закупа сырья</td>
-      <td>Гульмира Сериковна</td>
-      <td>15 октября</td>
-      <td><span class="tag">в работе</span></td>
-      <td class="wrap"><a href="meeting.html">Химическая промышленность и ТБ</a></td>
-    </tr>
-    <tr>
-      <td class="wrap">Полный аудит датчиков утечки и СИЗ на 11 площадках</td>
-      <td>Нурлан Сагатович</td>
-      <td>15 октября</td>
-      <td><span class="tag">в работе</span></td>
-      <td class="wrap"><a href="meeting.html">Химическая промышленность и ТБ</a></td>
-    </tr>
-    <tr>
-      <td class="wrap">Найти альтернативного поставщика сырья (расчёт)</td>
-      <td>Ботагоз Нурлановна</td>
-      <td>2 недели</td>
-      <td><span class="tag ok">выполнено</span></td>
-      <td class="wrap"><a href="meeting.html">Доклады по показателям направлений</a></td>
-    </tr>
-    <tr>
-      <td class="wrap">Подготовить смету по доп. группам обучения</td>
-      <td>Ерболат Мухтарович</td>
-      <td>1 неделя</td>
-      <td><span class="tag ok">выполнено</span></td>
-      <td class="wrap"><a href="meeting.html">Доклады по показателям направлений</a></td>
-    </tr>
-    <tr>
-      <td class="wrap">Подготовить уведомление подрядчикам, обновить шаблон договора</td>
-      <td>Салтанат Ерболовна</td>
-      <td class="muted">не указан</td>
-      <td><span class="tag">в работе</span></td>
-      <td class="wrap"><a href="meeting.html">Доклады по показателям направлений</a></td>
-    </tr>
-  </table>
-  </div>
-
+  <div id="list"></div>
 </main>
 
-<footer>SOCBrain · каркас фронтенда, структура на основе внутреннего проекта aster_zapis</footer>
+<footer>SOCBrain · автопротоколирование совещаний · распознавание и диаризация — локально</footer>
+<script src="js/api.js"></script>
 </body>
 </html>

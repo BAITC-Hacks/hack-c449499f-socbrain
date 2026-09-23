@@ -11,7 +11,7 @@ from pathlib import Path
 
 from openai import OpenAI
 
-from .base import STTProvider, TranscriptResult, TranscriptSegment
+from .base import STTProvider, TranscriptResult, TranscriptSegment, TranscriptWord
 
 
 class OpenAIWhisperProvider(STTProvider):
@@ -24,17 +24,19 @@ class OpenAIWhisperProvider(STTProvider):
         self._client = OpenAI(api_key=api_key)
         self._model = model
 
-    def transcribe(self, audio_path: Path) -> TranscriptResult:
+    def transcribe(self, audio_path: Path, prompt: str | None = None) -> TranscriptResult:
         with open(audio_path, "rb") as f:
             response = self._client.audio.transcriptions.create(
                 model=self._model,
                 file=f,
                 response_format="verbose_json",
-                timestamp_granularities=["segment"],
+                timestamp_granularities=["segment", "word"],
+                **({"prompt": prompt} if prompt else {}),
             )
 
         segments = [
             TranscriptSegment(start=seg.start, end=seg.end, text=seg.text)
-            for seg in response.segments
+            for seg in response.segments or []
         ]
-        return TranscriptResult(language=response.language, segments=segments)
+        words = [TranscriptWord(w.start, w.end, " " + w.word) for w in response.words or []]
+        return TranscriptResult(language=response.language, segments=segments, words=words)

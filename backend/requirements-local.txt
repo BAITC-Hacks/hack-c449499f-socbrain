@@ -1,4 +1,5 @@
-# Ставится отдельно, когда переключаемся на self-hosted распознавание
-# (STT_PROVIDER=local) — не устанавливаем сразу, faster-whisper тянет
-# тяжёлые зависимости (torch и веса модели, несколько ГБ).
-faster-whisper==1.0.3
+# Self-hosted распознавание и диаризация (STT_PROVIDER=local) — ставится в образ worker.
+# faster-whisper >= 1.1: нужен multilingual (язык по фрагментам) для шала-казахской речи.
+faster-whisper>=1.1
+sherpa-onnx>=1.10
+numpy>=1.26

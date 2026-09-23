@@ -6,7 +6,7 @@
 <title>Совещания · SOCBrain</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body data-page="meetings">
 
 <nav class="side">
   <div class="brand">SOCBrain<small>автопротоколирование совещаний</small></div>
@@ -26,9 +26,23 @@
 
 <main>
   <h1>Совещания</h1>
-  <p class="sub">Найдено: 4 · всего в базе: 4</p>
+  <p class="sub" id="found">Загрузка…</p>
 
-  <form method="get" class="filters">
+  <h2>Новое совещание</h2>
+  <form id="upload" class="filters">
+    <div style="flex:2 1 260px"><label>тема</label><input type="text" name="title" required placeholder="Оперативное совещание" style="width:100%"></div>
+    <div><label>дата</label><input type="date" name="meeting_date"></div>
+    <div style="flex:2 1 260px"><label>запись (аудио/видео)</label><input type="file" name="file" required accept="audio/*,video/*"></div>
+    <div style="flex:1 1 100%"><label>участники — по строке «Имя Отчество — должность» (необязательно, улучшает распознавание имён)</label>
+      <textarea name="participants" rows="3" placeholder="Асхат Ерланович — заместитель председателя правления&#10;Гульмира Сериковна — директор департамента промышленной политики"></textarea></div>
+    <div style="flex:1 1 100%"><label style="display:flex;gap:8px;align-items:center;font-size:14px;color:var(--text)">
+      <input type="checkbox" name="consent" value="true" required>
+      Участники уведомлены, что ведётся запись и транскрибация с помощью ИИ</label></div>
+    <div><button type="submit">Загрузить и обработать</button> <span id="upload-msg" class="muted"></span></div>
+  </form>
+
+  <h2>Все совещания</h2>
+  <form method="get" class="filters" id="filters">
     <div><label>с</label><input type="date" name="from"></div>
     <div><label>по</label><input type="date" name="to"></div>
     <div><label>участник</label><input type="text" name="who" placeholder="имя"></div>
@@ -52,68 +66,10 @@
     <div><button type="submit">Найти</button></div>
   </form>
 
-  <div class="scroll">
-  <table>
-    <tr>
-      <th>Дата</th><th>Тема</th><th>Участников</th><th>Язык</th>
-      <th>Статус</th><th class="right">Поручений</th><th class="wrap">Суть</th>
-    </tr>
-    <tr>
-      <td><a href="meeting.html">23 сен, 10:00</a></td>
-      <td>Химическая промышленность и техника безопасности</td>
-      <td>5</td>
-      <td>рус</td>
-      <td><span class="tag ok">готово</span></td>
-      <td class="right">5</td>
-      <td class="gist muted">
-        <span class="clip">Загрузка мощностей 71%, риск сдвига запуска Павлодарского завода на полгода; датчики утечки газа не поверялись год — назначен аудит по 11 площадкам.</span>
-        <span class="more"></span>
-      </td>
-    </tr>
-    <tr>
-      <td><a href="meeting.html">18 сен, 09:30</a></td>
-      <td>Доклады по производственным показателям направлений</td>
-      <td>5</td>
-      <td>рус</td>
-      <td><span class="tag ok">готово</span></td>
-      <td class="right">4</td>
-      <td class="gist muted">
-        <span class="clip">Срыв поставки сырья третий месяц подряд, освоение инвестбюджета 68%, 12% персонала с просроченными сертификатами по ТБ.</span>
-        <span class="more"></span>
-      </td>
-    </tr>
-    <tr>
-      <td><a href="meeting.html">23 сен, 14:00</a></td>
-      <td>Оперативное совещание — логистика</td>
-      <td>4</td>
-      <td><span class="tag warn">смеш</span></td>
-      <td><span class="tag">обрабатывается</span></td>
-      <td class="right muted">—</td>
-      <td class="wrap muted">расшифровка ещё не готова</td>
-    </tr>
-    <tr>
-      <td><a href="meeting.html">15 сен, 11:00</a></td>
-      <td>Инвестпроекты — статус на сентябрь</td>
-      <td>3</td>
-      <td>рус</td>
-      <td><span class="tag ok">готово</span></td>
-      <td class="right">3</td>
-      <td class="gist muted">
-        <span class="clip">Обзор хода трёх ключевых инвестпроектов, согласование графика финансирования на четвёртый квартал.</span>
-        <span class="more"></span>
-      </td>
-    </tr>
-  </table>
-  </div>
-
+  <div id="list"></div>
 </main>
 
-<footer>SOCBrain · каркас фронтенда, структура на основе внутреннего проекта aster_zapis</footer>
-<script>
-document.addEventListener("click", function (e) {
-  var cell = e.target.closest("td.gist");
-  if (cell) cell.classList.toggle("open");
-});
-</script>
+<footer>SOCBrain · автопротоколирование совещаний · распознавание и диаризация — локально</footer>
+<script src="js/api.js"></script>
 </body>
 </html>

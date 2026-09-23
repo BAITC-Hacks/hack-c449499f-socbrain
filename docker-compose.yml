@@ -1,0 +1,57 @@
+# SOCBrain. Запуск: cp backend/.env.example backend/.env && docker compose up -d --build
+# Распознавание и диаризация — локальные (аудио не покидает хост при STT_PROVIDER=local).
+# LLM — по LLM_PROVIDER: облако (openai/nvidia) для разработки или локально (ollama/vllm) для контура.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: api
+    ports:
+      - "8000:8000"
+    volumes:
+      - data:/data
+    env_file:
+      - path: backend/.env
+        required: false
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: worker
+      args:
+        WHISPER_MODEL: ${WHISPER_MODEL:-small}
+    volumes:
+      - data:/data
+    env_file:
+      - path: backend/.env
+        required: false
+    restart: unless-stopped
+
+  # Локальная LLM для закрытого контура: docker compose --profile local-llm up -d
+  # и LLM_PROVIDER=ollama в backend/.env. Порт наружу не публикуется.
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["local-llm"]
+    volumes:
+      - ollama:/root/.ollama
+    environment:
+      - OLLAMA_NUM_PARALLEL=1
+      - OLLAMA_MAX_LOADED_MODELS=1
+    restart: unless-stopped
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    profiles: ["local-llm"]
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_HOST=ollama:11434
+    entrypoint: ["ollama", "pull", "${LLM_MODEL:-qwen2.5:3b}"]
+    restart: on-failure:5
+
+volumes:
+  data:
+  ollama:

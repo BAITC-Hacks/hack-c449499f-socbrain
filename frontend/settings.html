@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Настройки · SOCBrain</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="side">
+  <div class="brand">SOCBrain<small>автопротоколирование совещаний</small></div>
+
+  <a href="index.html">Дашборд</a>
+  <a href="meetings.html">Совещания</a>
+  <a href="tasks.html">Поручения</a>
+
+  <div class="bottom">
+    <a href="settings.html" class="on">Настройки</a>
+    <div class="who">
+      <span>Артём Е.</span>
+      <form method="get" action="login.html" class="inline"><button class="ghost">Выйти</button></form>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <h1>Настройки</h1>
+  <p class="sub">
+    Из 44 пунктов методологии Promt_master оставили 12 — те, что требует наш
+    случай (обязательный минимум ТЗ, сценарий 2 с напоминаниями, ограничение
+    "приватность обязательна", or явно названы в "Дополнительно"). Формулировки
+    настроек и текстов — из соответствующих промтов Promt_master, адаптированы
+    под протоколы совещаний вместо исходного продукта.
+  </p>
+
+  <div class="settings-shell">
+    <nav class="settings-nav">
+
+      <div class="settings-nav-group">Безопасность</div>
+      <button type="button" data-tab-target="sec-upload" class="active">Загрузка файлов</button>
+      <button type="button" data-tab-target="sec-import">Импорт сотрудников</button>
+
+      <div class="settings-nav-group">Внешний вид</div>
+      <button type="button" data-tab-target="look-login">Страница входа</button>
+      <button type="button" data-tab-target="look-theme">Тема и плотность</button>
+
+      <div class="settings-nav-group">Интеграции</div>
+      <button type="button" data-tab-target="int-mail">Почта</button>
+      <button type="button" data-tab-target="int-ai">Распознавание речи и ИИ</button>
+      <button type="button" data-tab-target="int-systems">Внешние системы</button>
+
+      <div class="settings-nav-group">Мониторинг</div>
+      <button type="button" data-tab-target="mon-health">Состояние</button>
+      <button type="button" data-tab-target="mon-metrics">Показатели</button>
+      <button type="button" data-tab-target="mon-notify">Уведомления</button>
+
+      <div class="settings-nav-group">О системе</div>
+      <button type="button" data-tab-target="sys-version">Версия и сборка</button>
+
+      <div class="settings-nav-group">Пользователи и доступ</div>
+      <button type="button" data-tab-target="usr-audit">Журнал доступа</button>
+
+    </nav>
+
+    <div class="settings-content">
+
+      <!-- ======================= ЗАГРУЗКА ФАЙЛОВ ======================= -->
+      <section class="settings-panel active" data-tab-step="sec-upload">
+        <h2 style="margin-top:0">Загрузка файлов</h2>
+        <p class="sub">
+          Что система принимает от людей и что с этим делает. У нас загруженный
+          файл — это аудио или видео совещания: то, что попадает в систему
+          от участников, кому мы доверяем не полностью, и остаётся там надолго.
+        </p>
+
+        <h3>Что принимаем</h3>
+        <div class="scroll">
+        <table>
+          <tr><th class="wrap">Настройка</th><th class="wrap">Пояснение</th></tr>
+          <tr><td>Предел размера</td><td class="wrap muted">2048 МБ на один файл — длинное совещание в хорошем качестве укладывается</td></tr>
+          <tr>
+            <td>Разрешённые расширения</td>
+            <td class="wrap muted">Список разрешённых, а не запрещённых: <code>mp3, wav, m4a, mp4, mkv</code>. Запрещать по списку бесполезно — расширений тысячи</td>
+          </tr>
+          <tr><td>Проверять содержимое, а не имя</td><td class="wrap muted">Расширение переименовывается за секунду — проверка смотрит на начало файла и сверяет с тем, чем он назвался</td></tr>
+        </table>
+        </div>
+
+        <h3>Что с файлом делаем</h3>
+        <div class="scroll">
+        <table>
+          <tr><th class="wrap">Настройка</th><th class="wrap">Пояснение</th></tr>
+          <tr><td>Хранить вне каталога веб-сервера</td><td class="wrap muted">Иначе запись открывается прямым адресом в обход прав — ссылку достаточно угадать</td></tr>
+          <tr><td>Удалять аудио после обработки через</td><td class="wrap muted">30 дней — данные чувствительные, хранить "на всякий случай" нельзя</td></tr>
+        </table>
+        </div>
+        <p class="sub">Файлы отдаются через систему, а не веб-сервером напрямую — только так к ним применяются права, а обращение попадает в журнал доступа.</p>
+
+        <div class="note">
+          <b>Новые правила не действуют на уже загруженные файлы.</b> Отказ при
+          загрузке называет причину: не "файл не принят", а "файлы с расширением
+          .exe не принимаются" либо "файл 2200 МБ при пределе 2048 МБ".
+        </div>
+      </section>
+
+      <!-- ======================= ИМПОРТ СОТРУДНИКОВ ======================= -->
+      <section class="settings-panel" data-tab-step="sec-import">
+        <h2 style="margin-top:0">Импорт сотрудников</h2>
+        <p class="sub">
+          Справочник сотрудников (ФИО · почта · должность) — по нему система
+          сопоставляет ответственного из реплики совещания с реальным человеком,
+          чтобы отправить ему выдержку из протокола (см. "Дополнительно" в ТЗ).
+        </p>
+
+        <h3>Кому и сколько</h3>
+        <div class="scroll">
+        <table>
+          <tr><th class="wrap">Настройка</th><th class="wrap">Пояснение</th></tr>
+          <tr><td>Разрешить загрузку справочника</td><td class="wrap muted">Выключено — остаётся ручное добавление сотрудников</td></tr>
+          <tr><td>Кому разрешено</td><td class="wrap muted">Секретарь, Администратор — право сильное: им заводят сотрудников пачкой</td></tr>
+          <tr><td>Спрашивать подтверждение личности</td><td class="wrap muted">Перед применением — пароль или код заново</td></tr>
+          <tr><td>Не больше строк за раз</td><td class="wrap muted">1000 · при файле больше 5000 строк — предупреждение, это уже миграция</td></tr>
+        </table>
+        </div>
+
+        <h3>Загрузка файла</h3>
+        <div class="toolbar">
+          <label class="btn ghost" style="cursor:pointer;">Выбрать файл (.csv)<input type="file" accept=".csv" style="display:none;"></label>
+          <button type="button" class="ghost" disabled>Сделать сухой прогон</button>
+        </div>
+        <p class="sub" style="margin-top:-8px;">Первая строка — заголовки столбцов (ФИО, email, должность). Кодировка — UTF-8.</p>
+
+        <div class="note"><b>Сухой прогон обязателен.</b> Показывает, сколько создастся/изменится/ошибок — ничего не пишет в справочник до подтверждения.</div>
+
+        <h3>Если запись уже есть</h3>
+        <div class="scroll">
+        <table>
+          <tr><th>Выбор</th><th class="wrap">Что происходит</th></tr>
+          <tr><td><span class="tag ok">Остановить</span></td><td class="wrap muted">По умолчанию — файл не применяется, пока не решили, что делать с совпадениями</td></tr>
+          <tr><td><span class="tag">Пропустить</span></td><td class="wrap muted">Существующие остаются как есть</td></tr>
+          <tr><td><span class="tag warn">Обновить</span></td><td class="wrap muted">Перезаписывает существующих, включая пустые поля — частая причина потерянных email</td></tr>
+        </table>
+        </div>
+
+        <h3>Последние загрузки</h3>
+        <div class="scroll">
+        <table>
+          <tr><th>Когда</th><th>Кто</th><th>Файл</th><th class="right">Строк</th><th>Итог</th><th>Состояние</th><th>Откат</th></tr>
+          <tr>
+            <td>18 сен, 11:20</td><td>Артём Е.</td><td><code>employees_sep.csv</code></td>
+            <td class="right">142</td><td class="muted">создано 138 · изменено 3 · пропущено 1</td>
+            <td><span class="tag ok">применено</span></td><td><a href="#">откатить</a></td>
+          </tr>
+        </table>
+        </div>
+
+        <div class="note warn">
+          <b>Чего здесь нет:</b> импорта ролей и прав, регулярной синхронизации по
+          расписанию (это "Интеграции → Внешние системы"), паролей.
+        </div>
+      </section>
+
+      <!-- ======================= СТРАНИЦА ВХОДА ======================= -->
+      <section class="settings-panel" data-tab-step="look-login">
+        <h2 style="margin-top:0">Страница входа</h2>
+        <p class="sub">
+          Единственный экран системы, который видят невошедшие — login.html.
+          Всё написанное здесь публично, и это стоит держать в уме при заполнении.
+        </p>
+
+        <h3>Фон</h3>
+        <div class="scroll">
+        <table>
+          <tr><th>Вариант</th><th class="wrap">Пояснение</th></tr>
+          <tr><td>Обычный</td><td class="wrap muted">ничего дополнительного</td></tr>
+          <tr><td>Цветом</td><td class="wrap muted">форма входа остаётся белой — текст в ней должен читаться</td></tr>
+          <tr><td>Картинкой</td><td class="wrap muted">на телефоне видна только середина — важное по краям обрежется. Файл тяжелее 1 МБ — вход будет открываться заметно дольше</td></tr>
+        </table>
+        </div>
+
+        <h3>Тексты</h3>
+        <div class="scroll">
+        <table>
+          <tr><th class="wrap">Поле</th><th class="wrap">Пояснение</th></tr>
+          <tr><td>Заголовок</td><td class="wrap muted">SOCBrain</td></tr>
+          <tr><td>Подзаголовок</td><td class="wrap muted">Автопротоколирование совещаний — одна строка, пусто и правильно, если сказать нечего</td></tr>
+          <tr><td>Что делать, если не получается войти</td><td class="wrap muted">Самая полезная строка на экране — без неё человек звонит первому попавшемуся коллеге</td></tr>
+          <tr><td>Правовая сноска</td><td class="wrap muted">Мелким шрифтом внизу: предупреждение о записи действий и ссылка на политику обработки данных совещаний</td></tr>
+        </table>
+        </div>
+        <div class="note warn">Тексты проверяются на телефоны, адреса серверов и почтовые ящики — снаружи страницу входа читают все, включая тех, кто собирает данные для звонка от имени поддержки.</div>
+
+        <div class="note warn">
+          <b>Чего здесь не будет:</b> списка сотрудников/подсказок логина (по нему
+          подбирают пароли), разных сообщений "нет такого пользователя" и
+          "неверный пароль" (разница в ответах позволяет узнать, кто в системе есть).
+        </div>
+      </section>
+
+      <!-- ======================= ТЕМА И ПЛОТНОСТЬ ======================= -->
+      <section class="settings-panel" data-tab-step="look-theme">
+        <h2 style="margin-top:0">Тема и плотность</h2>
+        <div class="note">Всё на этом экране — умолчание, а не приказ. Сотрудник меняет тему и размер текста под себя, и его выбор важнее вашего.</div>
+
+        <h3>Тема по умолчанию</h3>
+        <div class="scroll">
+        <table>
+          <tr><th>Выбор</th><th class="wrap">Пояснение</th></tr>
+          <tr><td>Светлая</td><td class="wrap muted">привычный вид, лучше читается при обычном освещении</td></tr>
+          <tr><td>Тёмная</td><td class="wrap muted">мельче текст на тёмном читается хуже, чем принято думать — выбор, а не улучшение</td></tr>
+          <tr><td><b>Как в системе</b></td><td class="wrap muted">следует настройке устройства — уже реализовано у нас через prefers-color-scheme</td></tr>
+        </table>
+        </div>
+
+        <h3>Плотность и размер</h3>
+        <div class="scroll">
+        <table>
+          <tr><th class="wrap">Настройка</th><th class="wrap">Пояснение</th></tr>
+          <tr><td>Плотность таблиц</td><td class="wrap muted">Плотная умещает на экран примерно на треть больше строк — полезно для секретаря, который весь день в списке совещаний</td></tr>
+          <tr><td>Размер текста</td><td class="wrap muted">100% · 115% · 130% — увеличивает весь интерфейс, а не только буквы</td></tr>
+        </table>
+        </div>
+
+        <h3>Доступность</h3>
+        <div class="scroll">
+        <table>
+          <tr><th class="wrap">Настройка</th><th class="wrap">Пояснение</th></tr>
+          <tr><td>Повышенный контраст</td><td class="wrap muted">границы и подписи темнее — нужно при слабом зрении и ярком свете</td></tr>
+          <tr><td>Меньше движения</td><td class="wrap muted">убирает выезжающие панели и переходы — у части людей движение вызывает тошноту, это не преувеличение</td></tr>
+        </table>
+        </div>
+      </section>
+
+      <!-- ======================= ПОЧТА ======================= -->
+      <section class="settings-panel" data-tab-step="int-mail">
+        <h2 style="margin-top:0">Почта</h2>
+        <p class="sub">
+          Единственное подключение, без которого встаёт рассылка поручений
+          ответственным и напоминания о сроках — экран не только настраивает
+          ящик, но и показывает, что именно сломается без него.
+        </p>
+
+        <div class="scroll">
+        <table>
+          <tr><th>Подключение</th><th class="wrap">Где используется</th><th>Состояние</th><th>Проверялось</th></tr>
+          <tr>
+            <td>Корпоративная почта<br><span class="muted">SMTP</span></td>
+            <td class="wrap">рассылка поручений · напоминания о сроках</td>
+            <td><span class="tag ok">работает</span></td>
+            <td class="muted">18 сен, 09:12</td>
+          </tr>
+        </table>
+        </div>
+
+        <h3>Параметры (SMTP — исходящая почта)</h3>
+        <div class="scroll">
+        <table>
+          <tr><th class="wrap">Поле</th><th>По умолчанию</th><th class="wrap">Примечание</th></tr>
+          <tr><td>Адрес сервера</td><td class="muted">—</td><td class="wrap muted">обязательно</td></tr>
+          <tr><td>Порт</td><td>587</td><td class="wrap muted"></td></tr>
+          <tr><td>Шифрование</td><td>STARTTLS</td><td class="wrap muted">без шифрования логин и пароль уходят открытым текстом</td></tr>
+          <tr><td>Адрес отправителя</td><td class="muted">—</td><td class="wrap muted">домен должен совпадать с разрешённым на сервере, иначе письма уйдут в спам</td></tr>
+        </table>
+        </div>
+
+        <h3>Проверка связи</h3>
+        <p class="sub">Кнопка отправляет письмо на указанный адрес и показывает ответ сервера — проверка без реальной отправки не проверяет ничего.</p>
+        <button type="button" class="ghost" disabled>Проверить связь</button>
+
+        <h3>Что перестанет работать без почты</h3>
+        <div class="scroll">
+        <table>
+          <tr><th class="wrap">Что</th><th class="wrap">Последствие</th></tr>
+          <tr><td>Рассылка выдержки из протокола</td><td class="wrap muted">Ответственный не получит свою часть протокола автоматически</td></tr>
+          <tr><td>Напоминания о сроке поручения</td><td class="wrap muted">Никто не узнает о приближении или просрочке срока</td></tr>
+        </table>
+        </div>
+      </section>
+
+      <!-- ======================= РАСПОЗНАВАНИЕ РЕЧИ И ИИ ======================= -->
+      <section class="settings-panel" data-tab-step="int-ai">
+        <h2 style="margin-top:0">Распознавание речи и ИИ</h2>
+        <p class="sub">
+          Какие модели подключены, где применяются и локальные ли они —
+          для нас это не про деньги (как в оригинале Promt_master), а про
+          прямой запрет ТЗ: "передача аудио/текста во внешние облачные API запрещена".
+        </p>
+
+        <h3>Подключённые модели</h3>
+        <div class="scroll">
+        <table>
+          <tr><th class="wrap">Модель</th><th>Назначение</th><th>Расположение</th><th>Состояние</th></tr>
+          <tr>
+            <td>faster-whisper large-v3</td><td>распознавание речи (STT)</td>
+            <td><span class="tag ok">локальная</span></td><td><span class="tag ok">работает</span></td>
+          </tr>
+          <tr>
+            <td>pyannote.audio</td><td>диаризация — кто говорит</td>
+            <td><span class="tag ok">локальная</span></td><td><span class="tag ok">работает</span></td>
+          </tr>
+          <tr>
+            <td>локальная LLM</td><td>извлечение поручений и саммари</td>
+            <td><span class="tag ok">локальная</span></td><td><span class="tag">не проверялась</span></td>
+          </tr>
+        </table>
+        </div>
+        <p class="sub">
+          Модель считается локальной, если адрес службы ведёт в свою сеть
+          (localhost, 127.*, 10.*, 192.168.*) — признак вычисляется по адресу,
+          а не задаётся переключателем: администратор ошибётся, адрес не соврёт.
+        </p>
+
+        <h3>Языки распознавания</h3>
+        <div class="scroll">
+        <table>
+          <tr><th>Язык</th><th class="wrap">Статус</th></tr>
+          <tr><td>Русский</td><td><span class="tag ok">включён</span></td></tr>
+          <tr><td>Казахский</td><td><span class="tag ok">включён</span></td></tr>
+          <tr><td>Смешанный (шала-қаз)</td><td><span class="tag warn">включён · точность ниже</span></td></tr>
+        </table>
+        </div>
+
+        <h3>Что нельзя отправлять во внешние модели</h3>
+        <p class="sub">Главное отличие раздела от прочих подключений: облачная модель — это передача данных третьей стороне, часто за границу. По ТЗ такая передача запрещена целиком, а не частично.</p>
+        <div class="scroll">
+        <table>
+          <tr><th class="wrap">Категория</th><th>Разрешено отправлять во внешние API</th></tr>
+          <tr><td>Аудио совещаний</td><td><span class="tag bad">запрещено</span></td></tr>
+          <tr><td>Расшифровка (текст)</td><td><span class="tag bad">запрещено</span></td></tr>
+          <tr><td>ФИО участников и поручения</td><td><span class="tag bad">запрещено</span></td></tr>
+        </table>
+        </div>
+        <div class="note ok">Локальным моделям правило не мешает — модель на своём сервере данных из контура не выносит. Подключений облачных моделей сейчас: 0.</div>
+
+        <h3>Дополнительно (из ТЗ)</h3>
+        <div class="scroll">
+        <table>
+          <tr><th class="wrap">Настройка</th><th class="wrap">Пояснение</th></tr>
+          <tr>
+            <td>Голосовая идентификация по тембру</td>
+            <td class="wrap muted">Выключено — сверх диаризации, узнаёт конкретного человека по голосу между совещаниями (voiceprints). Есть референсная реализация в Analyz-zapis</td>
+          </tr>
+          <tr>
+            <td>Хранить аудио после обработки</td>
+            <td class="wrap muted">30 дней, синхронизировано с "Безопасность → Загрузка файлов"</td>
+          </tr>
+        </table>
+        </div>
+      </section>
+
+      <!-- ======================= ВНЕШНИЕ СИСТЕМЫ ======================= -->
+      <section class="settings-panel" data-tab-step="int-systems">
+        <h2 style="margin-top:0">Внешние системы</h2>
+        <p class="sub">
+          Обмен по API с тем, что уже работает в организации: платформы
+          видеоконференций и СЭД — оба явно названы в "Дополнительно" ТЗ.
+        </p>
+
+        <div class="scroll">
+        <table>
+          <tr><th>Подключение</th><th class="wrap">Где используется</th><th>Состояние</th><th>Признак проверки</th></tr>
+          <tr>
+            <td>Zoom<br><span class="muted">выдача временного токена</span></td>
+            <td class="wrap">приём записи совещания по вебхуку</td>
+            <td><span class="tag">не подключено</span></td>
+            <td class="muted">адрес проверен</td>
+          </tr>
+          <tr>
+            <td>СЭД<br><span class="muted">REST с ключом в заголовке</span></td>
+            <td class="wrap">выгрузка протокола, за пределами обязательной части ТЗ</td>
+            <td><span class="tag">не подключено</span></td>
+            <td class="muted">служба своя — адрес зависит от установки</td>
+          </tr>
+        </table>
+        </div>
+
+        <div class="note">
+          <b>Сборник систем.</b> Администратор выбирает службу, а не протокол:
+          "Zoom", а не "REST с OAuth". Адрес, где взять ключ и особенность
+          (Zoom — "запись отдаётся частями по вебхуку recording.completed")
+          уже заполнены шаблоном; значения можно править.
+        </div>
+      </section>
+
+      <!-- ======================= СОСТОЯНИЕ ======================= -->
+      <section class="settings-panel" data-tab-step="mon-health">
+        <h2 style="margin-top:0">Состояние</h2>
+        <p class="sub">Единственный экран области, где ничего не настраивается — отвечает на вопрос "у нас всё работает?", с которым сюда и приходят.</p>
+
+        <div class="note ok" style="font-size:16px;">Работает. Ни один порог не превышен.</div>
+
+        <div class="cards" style="margin:16px 0">
+          <div class="card"><div class="n">3</div><div class="l">совещаний в очереди на обработку</div></div>
+          <div class="card"><div class="n">0%</div><div class="l">доля ошибок распознавания</div></div>
+          <div class="card"><div class="n">4 мин</div><div class="l">худшее время обработки 10 мин аудио</div></div>
+        </div>
+        <p class="sub">Очередь показывает, работает ли то, что делается не сразу: растущая очередь — единственная поломка, при которой сайт снаружи выглядит полностью исправным.</p>
+
+        <h3>Пороги</h3>
+        <div class="scroll">
+        <table>
+          <tr><th>Показатель</th><th>Состояние</th><th class="wrap">Что сейчас</th></tr>
+          <tr><td>Очередь обработки</td><td><span class="tag ok">в порядке</span></td><td class="wrap muted">3 из порога &lt; 15</td></tr>
+          <tr><td>Свободно под аудио</td><td><span class="tag warn">стоит посмотреть</span></td><td class="wrap muted">22 ГБ при пороге &lt; 20 ГБ</td></tr>
+        </table>
+        </div>
+      </section>
+
+      <!-- ======================= ПОКАЗАТЕЛИ ======================= -->
+      <section class="settings-panel" data-tab-step="mon-metrics">
+        <h2 style="margin-top:0">Показатели</h2>
+        <p class="sub">Справочник: что система измеряет и что каждое число значит. Здесь ничего не настраивается — порог задаётся в "Триггерах", а смотрят его здесь, чтобы ставить осознанно.</p>
+
+        <div class="scroll">
+        <table>
+          <tr><th class="wrap">Показатель</th><th class="wrap">Что объясняет</th></tr>
+          <tr><td>Точность распознавания (WER)</td><td class="wrap muted">по эталонным протоколам — свежая цифра для README, не для тревог</td></tr>
+          <tr><td>Совещаний в очереди</td><td class="wrap muted">главный показатель раздела</td></tr>
+          <tr><td>Время обработки на минуту аудио, худшее</td><td class="wrap muted">именно оно и есть "тормозит" — среднее может быть прекрасным, пока каждая двадцатая запись ждёт долго</td></tr>
+          <tr><td>Доля поручений без срока</td><td class="wrap muted">ноль не бывает никогда, важен скачок — модель не всегда может извлечь срок</td></tr>
+          <tr><td>Просрочено поручений</td><td class="wrap muted">разбор — на "Поручения", здесь только высота</td></tr>
+          <tr><td>Свободно под аудио</td><td class="wrap muted">кончается не постепенно, а в один день</td></tr>
+        </table>
+        </div>
+        <p class="sub">Показатели — не журнал: здесь только числа, сколько и когда. Кто именно и что сделал — в "Журнале доступа".</p>
+      </section>
+
+      <!-- ======================= УВЕДОМЛЕНИЯ ======================= -->
+      <section class="settings-panel" data-tab-step="mon-notify">
+        <h2 style="margin-top:0">Уведомления</h2>
+        <p class="sub">
+          Единственное место доставки во всей системе — сценарий 2 из ТЗ:
+          "Руководитель/куратор поручения получает автоматическое напоминание
+          при приближении срока исполнения или при его просрочке."
+          Каналы не заводятся здесь — почта подключается в "Интеграции → Почта".
+        </p>
+
+        <h3>Кому</h3>
+        <div class="scroll">
+        <table>
+          <tr><th class="wrap">Настройка</th><th class="wrap">Пояснение</th></tr>
+          <tr><td>Получатель</td><td class="wrap muted">Ответственный за поручение + куратор совещания — роль, а не человек поимённо: список имён устаревает молча</td></tr>
+          <tr><td>Дополнительные адреса</td><td class="wrap muted">ящик секретаря — тех, кто в систему не заходит, но должен знать</td></tr>
+        </table>
+        </div>
+
+        <h3>Как</h3>
+        <div class="scroll">
+        <table>
+          <tr><th class="wrap">Настройка</th><th class="wrap">Пояснение</th></tr>
+          <tr><td>Напоминать за</td><td class="wrap muted">2 дня до срока — почтой из "Интеграции → Почта"</td></tr>
+          <tr><td>При просрочке</td><td class="wrap muted">уведомлять ежедневно, пока статус не изменится</td></tr>
+          <tr><td>Не повторять чаще</td><td class="wrap muted">1440 минут — иначе одно сломанное поручение даёт сотню одинаковых писем</td></tr>
+        </table>
+        </div>
+
+        <h3>Тихие часы</h3>
+        <div class="scroll">
+        <table>
+          <tr><th class="wrap">Настройка</th><th class="wrap">Пояснение</th></tr>
+          <tr><td>Ночью и в выходные беспокоить реже</td><td class="wrap muted">не выключает уведомления, а поднимает планку — просрочка придёт всё равно</td></tr>
+          <tr><td>С какого по какое</td><td class="wrap muted">20:00 — 08:00</td></tr>
+        </table>
+        </div>
+        <p class="sub">Тихие часы — не выключатель: задержанное поручение не ждёт утра.</p>
+      </section>
+
+      <!-- ======================= ВЕРСИЯ И СБОРКА ======================= -->
+      <section class="settings-panel" data-tab-step="sys-version">
+        <h2 style="margin-top:0">Версия и сборка</h2>
+        <p class="sub">Что именно установлено. Открывают перед обращением в поддержку и когда что-то пошло не так после обновления.</p>
+
+        <div class="scroll">
+        <table>
+          <tr><td>Система</td><td>SOCBrain</td></tr>
+          <tr><td>Версия</td><td><code>0.1.0-proto</code></td></tr>
+          <tr><td>Дата сборки</td><td><code>2026-09-23</code></td></tr>
+          <tr><td>Среда выполнения</td><td class="muted">каркас без бэкенда</td></tr>
+        </table>
+        </div>
+        <div class="note warn">Запущено как тестовая среда: данные ненастоящие, действия ни на что не влияют.</div>
+        <button type="button" class="ghost" disabled>Скопировать сведения</button>
+      </section>
+
+      <!-- ======================= ЖУРНАЛ ДОСТУПА ======================= -->
+      <section class="settings-panel" data-tab-step="usr-audit">
+        <h2 style="margin-top:0">Журнал доступа</h2>
+        <p class="sub">
+          Пишется для того, кто будет читать его через год, разбирая инцидент —
+          не для отладки в день написания кода. Прямое следствие ограничения ТЗ
+          "приватность и защита данных обязательны".
+        </p>
+
+        <div class="note warn">
+          По аналогии с нормативной рамкой ПП РК № 832, п. 38: хранение не менее
+          трёх лет, оперативный доступ не менее двух месяцев, у администраторов
+          нет полномочий изменять, удалять и отключать журнал. Кнопок
+          "Очистить"/"Отключить" в разделе нет и не может быть — ни для кого.
+        </div>
+
+        <h3>Отбор</h3>
+        <div class="filters">
+          <div><label>период</label>
+            <select><option>сегодня</option><option>неделя</option><option>месяц</option><option>3 месяца</option></select>
+          </div>
+          <div><label>категория</label>
+            <select><option>любая</option><option>вход и сессии</option><option>совещания</option><option>поручения</option><option>справочник сотрудников</option></select>
+          </div>
+          <div><label>исход</label>
+            <select><option>любой</option><option>выполнено</option><option>отказано</option><option>ошибка</option></select>
+          </div>
+        </div>
+
+        <div class="scroll">
+        <table>
+          <tr><th>№</th><th>Время</th><th>Событие</th><th>Исход</th><th>Кто</th><th class="wrap">Над чем</th></tr>
+          <tr>
+            <td>1042</td><td class="muted">23.09 10:14</td><td>meeting.uploaded</td>
+            <td><span class="tag ok">выполнено</span></td><td>Артём Е.</td>
+            <td class="wrap">Химическая промышленность и ТБ</td>
+          </tr>
+          <tr>
+            <td>1041</td><td class="muted">23.09 10:15</td><td>meeting.export</td>
+            <td><span class="tag ok">выполнено</span></td><td>Артём Е.</td>
+            <td class="wrap">Химическая промышленность и ТБ → PDF</td>
+          </tr>
+          <tr>
+            <td>1040</td><td class="muted">22.09 18:02</td><td>employees.import</td>
+            <td><span class="tag ok">выполнено</span></td><td>Артём Е.</td>
+            <td class="wrap">142 строки, пакет #7</td>
+          </tr>
+        </table>
+        </div>
+        <p class="sub">Найдено записей: 3 · из них отказов: 0 · <a href="#">Выгрузить за период</a></p>
+      </section>
+
+    </div>
+  </div>
+</main>
+
+<footer>SOCBrain · каркас фронтенда, структура и формулировки — из внутреннего проекта aster_zapis и методологии Promt_master</footer>
+<script src="js/app.js"></script>
+</body>
+</html>

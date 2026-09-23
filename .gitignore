@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Секреты / локальные настройки
+.env
+*.env
+!*.env.example
+
+# ОС
+.DS_Store
+Thumbs.db
+
+# Редакторы
+.vscode/
+.idea/

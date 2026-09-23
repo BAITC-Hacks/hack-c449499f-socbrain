@@ -10,7 +10,6 @@ from ..config import settings
 
 log = logging.getLogger(__name__)
 
-MIN_TALK_SECONDS = 3.0  # меньше — не участник, а шум кластеризации
 
 
 @dataclass
@@ -59,7 +58,7 @@ def diarize(wav_path: Path, num_speakers: int = 0) -> list[Turn]:
     return turns
 
 
-def merge_minor_speakers(turns: list[Turn], min_talk: float = MIN_TALK_SECONDS) -> list[Turn]:
+def merge_minor_speakers(turns: list[Turn], min_talk: float | None = None) -> list[Turn]:
     """Свести «голоса», набравшие секунды речи, к соседним говорящим.
 
     Кластеризация принимает за отдельного человека кашель, эхо, короткое
@@ -68,6 +67,8 @@ def merge_minor_speakers(turns: list[Turn], min_talk: float = MIN_TALK_SECONDS) 
     приписать полсекунды не тому хуже, чем плодить несуществующих людей.
     (Подход из aster_zapis, diarization/server.py:limit_speakers.)
     """
+    # меньше min_talk секунд речи — не участник, а шум кластеризации (настройка «Диаризация»)
+    min_talk = settings.diarization_min_talk if min_talk is None else min_talk
     talk: dict[str, float] = {}
     for t in turns:
         talk[t.speaker] = talk.get(t.speaker, 0.0) + t.end - t.start

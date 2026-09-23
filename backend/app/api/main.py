@@ -1,5 +1,6 @@
 import os
 import re
+import smtplib
 from contextlib import asynccontextmanager
 from datetime import date, timedelta
 from pathlib import Path
@@ -11,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .. import db
-from ..config import LLM_PRESETS, is_external_url, settings
+from ..config import LLM_PRESETS, SECRETS, SECTIONS, coerce, is_external_url, load_overrides, settings
 from ..export import docx_export, pdf_export
 
 # Фронтенд лежит в корне репозитория (frontend/); в Docker-образе — /srv/frontend.
@@ -41,11 +42,85 @@ def health() -> dict:
 @app.get("/api/config")
 def public_config() -> dict:
     """Что видит пользователь о конфигурации: какая LLM и уходит ли текст за контур."""
-    stt = os.getenv("STT_PROVIDER", "local").lower()
+    stt = settings.stt_provider
     return {"llm_provider": settings.llm_provider, "llm_model": settings.llm_model,
             "llm_external": settings.llm_external and settings.llm_provider != "none",
             "stt_provider": stt, "stt_external": stt == "external",
-            "whisper_model": settings.whisper_model if stt == "local" else "whisper-1"}
+            "whisper_model": settings.whisper_model if stt == "local" else "whisper-1",
+            "appearance": settings.values["appearance"]}
+
+
+# --- настройки -----------------------------------------------------------------
+
+@app.get("/api/settings")
+def get_settings() -> dict:
+    """Действующие значения всех разделов + где они заданы + какие секреты есть в .env (без значений)."""
+    overrides = load_overrides(settings.db_path)
+    fields = {
+        section: {name: {"type": kind, "env": env, "default": default, "choices": choices,
+                         "source": "интерфейс" if overrides.get(section, {}).get(name) not in (None, "")
+                         else ".env" if os.getenv(env) else "по умолчанию"}
+                  for name, (kind, env, default, choices) in section_fields.items()}
+        for section, section_fields in SECTIONS.items()
+    }
+    return {"values": settings.values, "fields": fields, "updated_at": db.settings_updated_at(),
+            "secrets": {section: {env: bool(os.getenv(env)) for env in envs} for section, envs in SECRETS.items()},
+            "whisper_model": settings.whisper_model}
+
+
+@app.put("/api/settings/{section}")
+def put_settings(section: str, body: dict) -> dict:
+    """Сохранить раздел. Пустая строка в поле = вернуть значение из .env / по умолчанию."""
+    if section not in SECTIONS:
+        raise HTTPException(404, f"Нет раздела {section!r}")
+    fields = SECTIONS[section]
+    unknown = set(body) - set(fields)
+    if unknown:
+        raise HTTPException(400, f"Неизвестные поля: {', '.join(sorted(unknown))}")
+    saved = load_overrides(settings.db_path).get(section, {})
+    errors = {}
+    for name, raw in body.items():
+        kind, _, _, choices = fields[name]
+        if raw in (None, ""):
+            saved.pop(name, None)
+            continue
+        try:
+            saved[name] = coerce(kind, raw, choices)
+        except ValueError as exc:
+            errors[name] = str(exc) or "неверное значение"
+    if errors:
+        raise HTTPException(400, {"errors": errors})
+    db.save_settings(section, saved)
+    settings.reload()
+    return {"values": settings.values[section]}
+
+
+@app.post("/api/settings/mail/check")
+def check_mail() -> dict:
+    """Проверить SMTP: соединение, шифрование, вход. Письмо не отправляется."""
+    mail = settings.values["mail"]
+    steps = []
+    if not mail["host"]:
+        return {"ok": False, "steps": steps, "error": "Не указан адрес сервера"}
+    try:
+        smtp_cls = smtplib.SMTP_SSL if mail["security"] == "ssl" else smtplib.SMTP
+        with smtp_cls(mail["host"], mail["port"], timeout=10) as smtp:
+            steps.append(f"соединение с {mail['host']}:{mail['port']}")
+            smtp.ehlo()
+            if mail["security"] == "starttls":
+                smtp.starttls()
+                smtp.ehlo()
+                steps.append("STARTTLS")
+            if mail["username"]:
+                password = os.getenv("SMTP_PASSWORD", "")
+                if not password:
+                    return {"ok": False, "steps": steps,
+                            "error": "Указан логин, но SMTP_PASSWORD не задан в backend/.env"}
+                smtp.login(mail["username"], password)
+                steps.append("вход выполнен")
+    except (OSError, smtplib.SMTPException) as exc:
+        return {"ok": False, "steps": steps, "error": f"{type(exc).__name__}: {exc}"}
+    return {"ok": True, "steps": steps, "error": None}
 
 
 @app.get("/api/llm/providers")
@@ -132,9 +207,11 @@ def get_meeting(meeting_id: str) -> dict:
 @app.post("/api/meetings/{meeting_id}/reprocess")
 def reprocess(meeting_id: str, mode: str = "full") -> dict:
     """mode=full — заново всё (ASR, диаризация, анализ); mode=llm — только анализ готовой стенограммы."""
-    meeting = db.row("SELECT id, duration FROM meetings WHERE id = ?", meeting_id)
+    meeting = db.row("SELECT id, duration, filename FROM meetings WHERE id = ?", meeting_id)
     if not meeting:
         raise HTTPException(404)
+    if mode != "llm" and not meeting["filename"]:
+        raise HTTPException(400, "Аудио удалено по сроку хранения — доступен только «Переанализировать»")
     if mode == "llm" and not db.row("SELECT 1 FROM segments WHERE meeting_id = ? LIMIT 1", meeting_id):
         raise HTTPException(400, "Стенограммы ещё нет — нужна полная обработка")
     stage = "llm_only" if mode == "llm" else None

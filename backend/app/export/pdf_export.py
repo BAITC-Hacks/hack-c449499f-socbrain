@@ -9,6 +9,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+from ..config import settings
 from . import speaker_names, summary_of, task_rows, timecode
 
 FONT_DIR = "/usr/share/fonts/truetype/dejavu"
@@ -27,8 +28,10 @@ def _p(text: str, style=BODY) -> Paragraph:
 
 
 def build(meeting: dict) -> bytes:
-    story = [_p("Протокол совещания", H0),
-             _p(f"Тема: {meeting['title']}"), _p(f"Дата: {meeting['meeting_date']}")]
+    story = [_p("Протокол совещания", H0)]
+    if settings.values["appearance"]["org_name"]:
+        story.append(Paragraph(f"<b>{escape(settings.values['appearance']['org_name'])}</b>", BODY))
+    story += [_p(f"Тема: {meeting['title']}"), _p(f"Дата: {meeting['meeting_date']}")]
 
     story.append(_p("Участники", H1))
     for s in meeting["speakers"]:

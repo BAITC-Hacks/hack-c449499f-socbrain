@@ -61,12 +61,13 @@ function summaryOf(m) {
 
 // Предупреждение, если текст/аудио уходят во внешний API (ТЗ требует закрытого контура).
 async function privacyBanner() {
+  document.getElementById("privacy-banner")?.remove();
   const c = await api("/api/config").catch(() => null);
   if (!c || !(c.llm_external || c.stt_external)) return;
   const what = [c.stt_external && "аудио (распознавание)", c.llm_external && `текст стенограммы (LLM: ${c.llm_provider})`]
     .filter(Boolean).join(" и ");
   document.querySelector("main").insertAdjacentHTML("afterbegin",
-    `<div class="note warn">Режим разработки: ${what} отправляется во внешний API. ` +
+    `<div class="note warn" id="privacy-banner">Режим разработки: ${what} отправляется во внешний API. ` +
     "Для закрытого контура переключите STT_PROVIDER=local и LLM_PROVIDER=ollama/vllm.</div>");
 }
 
@@ -288,8 +289,151 @@ async function pageTasks() {
   document.getElementById("list").innerHTML = shown.length ? tasksTable(shown, true) : '<p class="sub">Поручений не найдено.</p>';
 }
 
-// ---------------------------------------------------------------- настройки → распознавание речи и ИИ
+// ---------------------------------------------------------------- настройки
 const placeTag = (external) => external ? '<span class="tag bad">внешняя</span>' : '<span class="tag ok">локальная</span>';
+const SOURCE = { "интерфейс": "задано здесь", ".env": "из backend/.env", "по умолчанию": "по умолчанию" };
+
+// Поля форм по разделам (config.SECTIONS на бэкенде). widget: seg | switch | text | number | textarea | select | header
+const FORMS = {
+  appearance: [
+    { name: "theme", label: "Тема", hint: "«Как в системе» следует настройке устройства", widget: "seg",
+      options: [["system", "Как в системе"], ["light", "Светлая"], ["dark", "Тёмная"]] },
+    { name: "density", label: "Плотность таблиц", hint: "Плотная умещает на экран примерно на треть больше строк", widget: "seg",
+      options: [["normal", "Обычная"], ["compact", "Плотная"]] },
+    { name: "font_scale", label: "Размер текста", widget: "seg", options: [["100", "100%"], ["115", "115%"], ["130", "130%"]] },
+    { name: "high_contrast", label: "Повышенный контраст", hint: "Границы и подписи темнее — при слабом зрении и ярком свете", widget: "switch" },
+    { name: "reduce_motion", label: "Меньше движения", hint: "Без анимаций и переходов", widget: "switch" },
+    { name: "org_name", label: "Организация", hint: "Печатается в шапке протокола (PDF/DOCX)", widget: "text", placeholder: "АО «Самрук-Қазына Ондеу»" },
+  ],
+  mail: [
+    { name: "host", label: "Адрес сервера", hint: "SMTP, исходящая почта", widget: "text", placeholder: "smtp.company.kz" },
+    { name: "port", label: "Порт", hint: "587 — STARTTLS, 465 — SSL", widget: "number" },
+    { name: "security", label: "Шифрование", hint: "Без шифрования логин и пароль уходят открытым текстом", widget: "seg",
+      options: [["starttls", "STARTTLS"], ["ssl", "SSL/TLS"], ["none", "нет"]] },
+    { name: "username", label: "Логин", hint: "Пароль — SMTP_PASSWORD в backend/.env", widget: "text" },
+    { name: "sender", label: "Адрес отправителя", hint: "Домен должен быть разрешён на сервере, иначе письма уйдут в спам", widget: "text", placeholder: "protocol@company.kz" },
+    { name: "reminders_enabled", label: "Напоминания по почте", hint: "Рассылка ответственным при приближении срока — включится вместе с адресами участников", widget: "switch" },
+  ],
+  llm: [
+    { name: "provider", label: "Провайдер", widget: "select", options: [] /* заполняется из /api/llm/providers */ },
+    { name: "model", label: "Модель", hint: "Пусто — модель шаблона провайдера", widget: "text" },
+    { name: "base_url", label: "Адрес", hint: "Пусто — адрес шаблона. Свой сервер в контуре (NIM, vLLM): http://<сервер>:8000/v1", widget: "text" },
+    { name: "timeout", label: "Таймаут, с", widget: "number" },
+  ],
+  stt: [
+    { name: "provider", label: "Где распознавать", hint: "Внешний — аудио уходит в OpenAI; по ТЗ запрещено", widget: "seg",
+      options: [["local", "Локально (faster-whisper)"], ["external", "OpenAI Whisper API"]] },
+    { name: "language", label: "Язык", hint: "Авто — язык по фрагментам: нужен для шала-казахской речи", widget: "seg",
+      options: [["", "Авто"], ["ru", "Русский"], ["kk", "Казахский"]] },
+    { name: "prompt", label: "Словарь-подсказка", hint: "Названия организаций, объектов, термины. Имена участников добавляются из карточки совещания сами", widget: "textarea" },
+  ],
+  diarization: [
+    { name: "num_speakers", label: "Число говорящих", hint: "0 — автоматически; если в карточке совещания указаны участники — берётся их число", widget: "number" },
+    { name: "threshold", label: "Порог кластеризации", hint: "Меньше — больше разных голосов; больше — голоса чаще сливаются", widget: "number", step: "0.05" },
+    { name: "min_talk_seconds", label: "Мин. речь участника, с", hint: "«Голос» с меньшей суммарной речью — шум, отходит соседу", widget: "number", step: "0.5" },
+  ],
+  processing: [
+    { name: "remind_days_before", label: "Напоминать за, дней", hint: "Поручение попадает в «Ближайшие сроки» и напоминания", widget: "number" },
+    { name: "audio_retention_days", label: "Хранить аудио, дней", hint: "Потом исходная запись удаляется, протокол и стенограмма остаются. 0 — бессрочно", widget: "number" },
+  ],
+  integrations: [
+    { widget: "header", label: "Zoom", hint: "Server-to-Server OAuth; запись приходит по вебхуку recording.completed. Секрет — ZOOM_CLIENT_SECRET" },
+    { name: "zoom_enabled", label: "Включить", widget: "switch" },
+    { name: "zoom_account_id", label: "Account ID", widget: "text" },
+    { name: "zoom_client_id", label: "Client ID", widget: "text" },
+    { widget: "header", label: "Microsoft Teams", hint: "Приложение в Entra ID, Graph API callRecords. Секрет — TEAMS_CLIENT_SECRET" },
+    { name: "teams_enabled", label: "Включить", widget: "switch" },
+    { name: "teams_tenant_id", label: "Tenant ID", widget: "text" },
+    { name: "teams_client_id", label: "Client ID", widget: "text" },
+    { widget: "header", label: "Google Meet", hint: "Сервисный аккаунт с доступом к записям в Drive. Ключ — файл MEET_KEY_FILE" },
+    { name: "meet_enabled", label: "Включить", widget: "switch" },
+    { name: "meet_service_account", label: "Сервисный аккаунт", widget: "text", placeholder: "protocol@project.iam.gserviceaccount.com" },
+    { widget: "header", label: "СЭД", hint: "Выгрузка утверждённого протокола. Ключ — SED_API_KEY" },
+    { name: "sed_enabled", label: "Включить", widget: "switch" },
+    { name: "sed_url", label: "Адрес API", widget: "text", placeholder: "https://sed.company.kz/api" },
+  ],
+};
+
+function fieldHtml(section, f, value, meta) {
+  const id = `f-${section}-${f.name}`;
+  let input;
+  if (f.widget === "seg") {
+    input = `<span class="seg-choice">${f.options.map(([v, l]) => `<label><input type="radio" name="${id}" value="${esc(v)}"
+      ${String(value) === v ? "checked" : ""}><span>${esc(l)}</span></label>`).join("")}</span>`;
+  } else if (f.widget === "switch") {
+    input = `<label class="switch"><input type="checkbox" id="${id}" ${value ? "checked" : ""}> ${value ? "включено" : "выключено"}</label>`;
+  } else if (f.widget === "select") {
+    input = `<select id="${id}">${f.options.map(([v, l]) => `<option value="${esc(v)}" ${value === v ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
+  } else if (f.widget === "textarea") {
+    input = `<textarea id="${id}" rows="3">${esc(value)}</textarea>`;
+  } else {
+    input = `<input type="${f.widget === "number" ? "number" : "text"}" id="${id}" value="${esc(value)}"
+      ${f.step ? `step="${f.step}"` : ""} placeholder="${esc(f.placeholder || "")}">`;
+  }
+  return `<label for="${id}">${esc(f.label)}${f.hint ? `<small>${esc(f.hint)}</small>` : ""}</label>
+    <div class="field">${input}<div class="src">${esc(SOURCE[meta?.source] || "")}${meta?.env ? ` · ${esc(meta.env)}` : ""}</div>
+    <div class="err" id="${id}-err"></div></div>`;
+}
+
+function readField(section, f) {
+  const id = `f-${section}-${f.name}`;
+  if (f.widget === "seg") return document.querySelector(`input[name="${id}"]:checked`)?.value ?? "";
+  if (f.widget === "switch") return document.getElementById(id).checked;
+  return document.getElementById(id).value;
+}
+
+function renderForm(section, data, onSaved) {
+  const root = document.getElementById(`form-${section}`);
+  if (!root) return;
+  const fields = FORMS[section];
+  const values = data.values[section];
+  const secrets = data.secrets[section];
+  const body = fields.map((f) => f.widget === "header"
+    ? `<div style="grid-column:1/-1;margin-top:6px"><b>${esc(f.label)}</b><div class="muted" style="font-size:12px">${esc(f.hint || "")}</div></div>`
+    : fieldHtml(section, f, values[f.name], data.fields[section][f.name])).join("");
+  const secretRows = secrets && section !== "llm" ? `<div style="grid-column:1/-1" class="muted">Секреты в backend/.env: ${Object.entries(secrets)
+    .map(([k, set]) => `<code>${k}</code> ${set ? '<span class="tag ok">задан</span>' : '<span class="tag">не задан</span>'}`).join(" · ")}</div>` : "";
+  root.innerHTML = `<form class="form" id="frm-${section}">${body}${secretRows}
+    <div class="actions"><button type="submit">Сохранить</button>
+      <button type="button" class="ghost" id="rst-${section}" title="Убрать значения, заданные здесь, — вернуться к backend/.env">Сбросить к .env</button>
+      <span class="muted" id="msg-${section}"></span></div></form>`;
+
+  const submit = async (payload) => {
+    const msg = document.getElementById(`msg-${section}`);
+    root.querySelectorAll(".err").forEach((e) => { e.textContent = ""; });
+    try {
+      const r = await fetch(`/api/settings/${section}`, { method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload) });
+      const j = await r.json();
+      if (!r.ok) {
+        const errors = j.detail?.errors || {};
+        Object.entries(errors).forEach(([k, v]) => { const e = document.getElementById(`f-${section}-${k}-err`); if (e) e.textContent = v; });
+        msg.textContent = Object.keys(errors).length ? "Исправьте поля" : (j.detail || r.statusText);
+        return;
+      }
+      const fresh = await api("/api/settings");
+      renderForm(section, fresh, onSaved);
+      document.getElementById(`msg-${section}`).textContent = "Сохранено ✓";
+      if (onSaved) onSaved(fresh);
+    } catch (err) { msg.textContent = err.message; }
+  };
+  document.getElementById(`frm-${section}`).onsubmit = (e) => {
+    e.preventDefault();
+    submit(Object.fromEntries(fields.filter((f) => f.name).map((f) => [f.name, readField(section, f)])));
+  };
+  document.getElementById(`rst-${section}`).onclick = () =>
+    submit(Object.fromEntries(fields.filter((f) => f.name).map((f) => [f.name, ""])));
+  // Тема применяется сразу при выборе, до сохранения — чтобы было видно, что выбираешь.
+  if (section === "appearance") {
+    root.querySelectorAll("input").forEach((el) => el.addEventListener("change", () =>
+      applyAppearance(Object.fromEntries(fields.filter((f) => f.name && f.widget !== "text").map((f) => [f.name, readField(section, f)])))));
+  }
+}
+
+function storeAppearance(a) {
+  try { localStorage.setItem("socbrain.appearance", JSON.stringify(a)); } catch (e) { /* приватный режим */ }
+  if (window.applyAppearance) applyAppearance(a);
+}
 
 function presetEnv(p) {
   const lines = [`LLM_PROVIDER=${p.id}`];
@@ -299,12 +443,38 @@ function presetEnv(p) {
   return lines.join("\n");
 }
 
-async function pageSettings() {
-  // Открыть нужную вкладку по ссылке settings.html#int-ai
-  const tab = location.hash && document.querySelector(`[data-tab-target="${location.hash.slice(1)}"]`);
-  if (tab) tab.click();
-  if (!document.getElementById("ai-models")) return;
+async function renderChecks(data, cfg) {
+  const mark = { ok: '<span class="tag ok">в порядке</span>', warn: '<span class="tag warn">стоит поправить</span>',
+                 bad: '<span class="tag bad">опасно</span>' };
+  const llm = data.values.llm;
+  const llmKeyEnv = { nvidia: "NVIDIA_API_KEY", openai: "OPENAI_API_KEY" }[llm.provider];
+  const checks = [
+    ["Вход в систему и роли", "bad", "не реализованы — любой в сети видит протоколы и поручения", "usr-users"],
+    ["Распознавание речи локальное", cfg.stt_external ? "bad" : "ok",
+      cfg.stt_external ? "аудио уходит в OpenAI — по ТЗ запрещено" : "аудио не покидает сервер", "proc-asr"],
+    ["Анализ стенограммы в контуре", llm.provider === "none" ? "warn" : cfg.llm_external ? "bad" : "ok",
+      llm.provider === "none" ? "LLM отключена — поручения только по шаблонам"
+        : cfg.llm_external ? `текст стенограммы уходит во внешний API (${llm.provider}) — только для разработки` : "LLM в своей сети", "int-ai"],
+    ...(cfg.llm_external && llmKeyEnv ? [["Ключ LLM задан", data.secrets.llm[llmKeyEnv] ? "ok" : "bad",
+      data.secrets.llm[llmKeyEnv] ? llmKeyEnv : `нет ${llmKeyEnv} в backend/.env — анализ не работает`, "int-ai"]] : []),
+    ["Соединение защищено (HTTPS)", location.protocol === "https:" ? "ok" : "warn",
+      location.protocol === "https:" ? "" : "страница открыта по HTTP — протоколы идут по сети открытым текстом", null],
+    ["Почта подключена", data.values.mail.host ? "ok" : "warn",
+      data.values.mail.host ? data.values.mail.host : "нет SMTP — не будет рассылки поручений и напоминаний", "int-mail"],
+    ["Срок хранения аудио задан", data.values.processing.audio_retention_days > 0 ? "ok" : "warn",
+      data.values.processing.audio_retention_days > 0 ? `${data.values.processing.audio_retention_days} дн.` : "записи хранятся бессрочно", "proc-retention"],
+  ];
+  const order = { bad: 0, warn: 1, ok: 2 };
+  checks.sort((a, b) => order[a[1]] - order[b[1]]);
+  const n = (s) => checks.filter((c) => c[1] === s).length;
+  document.getElementById("checks").innerHTML = `<div class="scroll"><table>
+    <tr><th class="wrap">Проверка</th><th>Состояние</th><th class="wrap">Что это значит</th></tr>
+    ${checks.map(([t, s, why, tab]) => `<tr><td>${tab ? `<a href="#${tab}">${esc(t)}</a>` : esc(t)}</td><td>${mark[s]}</td>
+      <td class="wrap muted">${esc(why)}</td></tr>`).join("")}</table></div>
+    <p class="sub">Итого: ${checks.length} проверок · ${n("bad")} опасно · ${n("warn")} стоит поправить · ${n("ok")} в порядке.</p>`;
+}
 
+async function renderAi() {
   const [cfg, llmInfo] = await Promise.all([api("/api/config"), api("/api/llm/providers")]);
   const active = llmInfo.presets.find((p) => p.id === llmInfo.active) || {};
   document.getElementById("ai-models").innerHTML = `<div class="scroll"><table>
@@ -318,12 +488,12 @@ async function pageSettings() {
   </table></div>`;
 
   document.getElementById("ai-llm").innerHTML = `<div class="scroll"><table>
-    <tr><td>Провайдер</td><td><b>${esc(active.title || llmInfo.active)}</b> <code>LLM_PROVIDER=${esc(llmInfo.active)}</code></td></tr>
+    <tr><td>Действует сейчас</td><td><b>${esc(active.title || llmInfo.active)}</b> · <code>${esc(llmInfo.active_model || "—")}</code></td></tr>
     <tr><td>Адрес</td><td><code>${esc(llmInfo.active_base_url)}</code> ${placeTag(llmInfo.active_external)}</td></tr>
-    <tr><td>Модель</td><td><code>${esc(llmInfo.active_model || "—")}</code></td></tr>
-    <tr><td>Ключ</td><td>${active.external && !active.key_set && llmInfo.active_external
-      ? `<span class="tag bad">не задан</span> впишите <code>${esc(active.key_env)}</code> в backend/.env`
-      : active.key_set ? `<span class="tag ok">задан</span> <code>${esc(active.key_env)}</code>` : '<span class="tag">не требуется</span>'}</td></tr>
+    <tr><td>Ключ</td><td>${llmInfo.active_external && active.key_env
+      ? (active.key_set ? `<span class="tag ok">задан</span> <code>${esc(active.key_env)}</code>`
+                        : `<span class="tag bad">не задан</span> впишите <code>${esc(active.key_env)}</code> в backend/.env и выполните <code>docker compose up -d</code>`)
+      : '<span class="tag">не требуется</span>'}</td></tr>
   </table></div>`;
 
   document.getElementById("ai-presets").innerHTML = `<div class="grid2">${llmInfo.presets.map((p) => `
@@ -331,9 +501,19 @@ async function pageSettings() {
       <div class="n" style="font-size:17px">${esc(p.title)} ${p.id === llmInfo.active ? '<span class="tag ok">активен</span>' : ""}</div>
       <div class="l">${placeTag(p.external)} ${p.external ? (p.key_set ? '<span class="tag ok">ключ задан</span>' : '<span class="tag">ключ не задан</span>') : ""}</div>
       <p class="sub" style="margin:8px 0">${esc(p.note)}${p.docs ? ` <a href="${esc(p.docs)}" target="_blank" rel="noopener">документация</a>` : ""}</p>
-      <pre style="margin:0">${esc(presetEnv(p))}</pre>
+      <pre style="margin:0 0 10px">${esc(presetEnv(p))}</pre>
+      ${p.id === llmInfo.active ? "" : `<button type="button" class="ghost" onclick="usePreset('${p.id}')">Использовать</button>`}
     </div>`).join("")}</div>`;
+  return llmInfo;
+}
 
+async function usePreset(id) {
+  await api("/api/settings/llm", { method: "PUT", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ provider: id, model: "", base_url: "" }) });
+  pageSettings();
+}
+
+function wireChecks() {
   document.getElementById("ai-check").onclick = async () => {
     const msg = document.getElementById("ai-check-msg");
     const out = document.getElementById("ai-check-result");
@@ -353,11 +533,44 @@ async function pageSettings() {
           <pre>${esc(r.models.join("\n"))}</pre></details>` : ""}`;
     } catch (err) { msg.textContent = err.message; }
   };
+  document.getElementById("mail-check").onclick = async () => {
+    const msg = document.getElementById("mail-check-msg");
+    msg.textContent = "Проверяю…";
+    const r = await api("/api/settings/mail/check", { method: "POST" }).catch((e) => ({ ok: false, steps: [], error: e.message }));
+    msg.textContent = "";
+    document.getElementById("mail-check-result").innerHTML = `<div class="note ${r.ok ? "ok" : "bad"}">
+      ${r.ok ? "Сервер принял подключение" : esc(r.error)}${r.steps.length ? ` · ${r.steps.map(esc).join(" → ")}` : ""}. Письмо не отправлялось.</div>`;
+  };
+}
+
+function openTabFromHash() {
+  const tab = location.hash && document.querySelector(`[data-tab-target="${location.hash.slice(1)}"]`);
+  if (tab) tab.click();
+}
+
+async function pageSettings() {
+  openTabFromHash();
+  window.onhashchange = openTabFromHash;
+  const [data, cfg] = await Promise.all([api("/api/settings"), api("/api/config")]);
+  const llmInfo = await renderAi();
+  FORMS.llm[0].options = llmInfo.presets.map((p) => [p.id, `${p.title}${p.external ? " — облако" : ""}`]);
+  const refresh = async () => { const [d, c] = await Promise.all([api("/api/settings"), api("/api/config")]); renderChecks(d, c); };
+  for (const section of Object.keys(FORMS)) {
+    renderForm(section, data, async (fresh) => {
+      if (section === "appearance") storeAppearance(fresh.values.appearance);
+      if (section === "llm" || section === "stt") { await renderAi(); privacyBanner(true); }
+      refresh();
+    });
+  }
+  renderChecks(data, cfg);
+  wireChecks();
 }
 
 const PAGES = { dashboard: pageDashboard, meetings: pageMeetings, meeting: pageMeeting, tasks: pageTasks,
                 settings: pageSettings };
 document.addEventListener("DOMContentLoaded", () => {
+  // Внешний вид по умолчанию — с сервера; theme.js уже применил сохранённый, здесь — обновить.
+  api("/api/config").then((c) => c.appearance && storeAppearance(c.appearance)).catch(() => {});
   const page = PAGES[document.body.dataset.page];
   if (!page) return;
   privacyBanner();

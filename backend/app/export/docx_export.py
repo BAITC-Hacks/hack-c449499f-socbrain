@@ -3,6 +3,7 @@ import io
 from docx import Document
 from docx.shared import Pt
 
+from ..config import settings
 from . import speaker_names, summary_of, task_rows, timecode
 
 
@@ -12,6 +13,9 @@ def build(meeting: dict) -> bytes:
     doc.styles["Normal"].font.size = Pt(12)
 
     doc.add_heading("Протокол совещания", level=0)
+    org = settings.values["appearance"]["org_name"]
+    if org:
+        doc.add_paragraph().add_run(org).bold = True
     doc.add_paragraph(f"Тема: {meeting['title']}\nДата: {meeting['meeting_date']}")
 
     names = speaker_names(meeting)

@@ -6,12 +6,14 @@ __all__ = ["STTProvider", "TranscriptResult", "TranscriptSegment", "TranscriptWo
 
 
 def get_provider() -> STTProvider:
-    """Выбор провайдера по STT_PROVIDER из окружения (см. .env.example).
+    """Выбор провайдера: STT_PROVIDER из .env или раздел «Обработка» в настройках.
 
     Остальной код обращается только сюда и к STTProvider — какая именно
     модель распознаёт речь, ему знать не нужно.
     """
-    provider = os.getenv("STT_PROVIDER", "local").lower()
+    from ..config import settings
+
+    provider = settings.stt_provider
 
     if provider == "external":
         from .external_openai import OpenAIWhisperProvider
@@ -19,7 +21,6 @@ def get_provider() -> STTProvider:
         return OpenAIWhisperProvider(api_key=os.getenv("OPENAI_API_KEY", ""))
 
     if provider == "local":
-        from ..config import settings
         from .local_faster_whisper import FasterWhisperProvider
 
         return FasterWhisperProvider(

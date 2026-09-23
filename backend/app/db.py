@@ -1,4 +1,5 @@
 """SQLite-хранилище. Общий volume /data используют api и worker; WAL допускает их одновременную работу."""
+import json
 import sqlite3
 import uuid
 from contextlib import closing
@@ -56,6 +57,11 @@ CREATE TABLE IF NOT EXISTS tasks (
     status           TEXT NOT NULL DEFAULT 'in_progress',  -- in_progress | done
     created_at       TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS app_settings (
+    section    TEXT PRIMARY KEY,   -- раздел из config.SECTIONS
+    value      TEXT NOT NULL,      -- JSON: поле -> значение (без секретов)
+    updated_at TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_segments_meeting ON segments(meeting_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_meeting ON tasks(meeting_id);
 """
@@ -99,6 +105,18 @@ def row(sql: str, *args) -> dict | None:
 def execute(sql: str, *args) -> int:
     with closing(connect()) as c:
         return c.execute(sql, args).lastrowid
+
+
+# --- настройки из интерфейса ---------------------------------------------------
+
+def save_settings(section: str, values: dict) -> None:
+    execute("INSERT INTO app_settings (section, value, updated_at) VALUES (?, ?, ?)"
+            " ON CONFLICT (section) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+            section, json.dumps(values, ensure_ascii=False), now())
+
+
+def settings_updated_at() -> dict[str, str]:
+    return {r["section"]: r["updated_at"] for r in rows("SELECT section, updated_at FROM app_settings")}
 
 
 # --- meetings ---------------------------------------------------------------

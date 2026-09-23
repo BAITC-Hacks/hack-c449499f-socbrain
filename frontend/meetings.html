@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Совещания · SOCBrain</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="side">
+  <div class="brand">SOCBrain<small>автопротоколирование совещаний</small></div>
+
+  <a href="index.html">Дашборд</a>
+  <a href="meetings.html" class="on">Совещания</a>
+  <a href="tasks.html">Поручения</a>
+
+  <div class="bottom">
+    <a href="#">Настройки</a>
+    <div class="who">
+      <span>Артём Е.</span>
+      <form method="get" action="login.html" class="inline"><button class="ghost">Выйти</button></form>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <h1>Совещания</h1>
+  <p class="sub">Найдено: 4 · всего в базе: 4</p>
+
+  <form method="get" class="filters">
+    <div><label>с</label><input type="date" name="from"></div>
+    <div><label>по</label><input type="date" name="to"></div>
+    <div><label>участник</label><input type="text" name="who" placeholder="имя"></div>
+    <div><label>язык</label>
+      <select name="lang">
+        <option value="">любой</option>
+        <option value="ru">русский</option>
+        <option value="kk">казахский</option>
+        <option value="mixed">смешанный</option>
+      </select>
+    </div>
+    <div><label>статус</label>
+      <select name="status">
+        <option value="">любой</option>
+        <option value="done">готово</option>
+        <option value="processing">обрабатывается</option>
+        <option value="error">сбой</option>
+      </select>
+    </div>
+    <div><label>в тексте протокола</label><input type="text" name="q" placeholder="слово"></div>
+    <div><button type="submit">Найти</button></div>
+  </form>
+
+  <div class="scroll">
+  <table>
+    <tr>
+      <th>Дата</th><th>Тема</th><th>Участников</th><th>Язык</th>
+      <th>Статус</th><th class="right">Поручений</th><th class="wrap">Суть</th>
+    </tr>
+    <tr>
+      <td><a href="meeting.html">23 сен, 10:00</a></td>
+      <td>Химическая промышленность и техника безопасности</td>
+      <td>5</td>
+      <td>рус</td>
+      <td><span class="tag ok">готово</span></td>
+      <td class="right">5</td>
+      <td class="gist muted">
+        <span class="clip">Загрузка мощностей 71%, риск сдвига запуска Павлодарского завода на полгода; датчики утечки газа не поверялись год — назначен аудит по 11 площадкам.</span>
+        <span class="more"></span>
+      </td>
+    </tr>
+    <tr>
+      <td><a href="meeting.html">18 сен, 09:30</a></td>
+      <td>Доклады по производственным показателям направлений</td>
+      <td>5</td>
+      <td>рус</td>
+      <td><span class="tag ok">готово</span></td>
+      <td class="right">4</td>
+      <td class="gist muted">
+        <span class="clip">Срыв поставки сырья третий месяц подряд, освоение инвестбюджета 68%, 12% персонала с просроченными сертификатами по ТБ.</span>
+        <span class="more"></span>
+      </td>
+    </tr>
+    <tr>
+      <td><a href="meeting.html">23 сен, 14:00</a></td>
+      <td>Оперативное совещание — логистика</td>
+      <td>4</td>
+      <td><span class="tag warn">смеш</span></td>
+      <td><span class="tag">обрабатывается</span></td>
+      <td class="right muted">—</td>
+      <td class="wrap muted">расшифровка ещё не готова</td>
+    </tr>
+    <tr>
+      <td><a href="meeting.html">15 сен, 11:00</a></td>
+      <td>Инвестпроекты — статус на сентябрь</td>
+      <td>3</td>
+      <td>рус</td>
+      <td><span class="tag ok">готово</span></td>
+      <td class="right">3</td>
+      <td class="gist muted">
+        <span class="clip">Обзор хода трёх ключевых инвестпроектов, согласование графика финансирования на четвёртый квартал.</span>
+        <span class="more"></span>
+      </td>
+    </tr>
+  </table>
+  </div>
+
+</main>
+
+<footer>SOCBrain · каркас фронтенда, структура на основе внутреннего проекта aster_zapis</footer>
+<script>
+document.addEventListener("click", function (e) {
+  var cell = e.target.closest("td.gist");
+  if (cell) cell.classList.toggle("open");
+});
+</script>
+</body>
+</html>

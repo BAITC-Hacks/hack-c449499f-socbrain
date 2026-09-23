@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Дашборд · SOCBrain</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="side">
+  <div class="brand">SOCBrain<small>автопротоколирование совещаний</small></div>
+
+  <a href="index.html" class="on">Дашборд</a>
+  <a href="meetings.html">Совещания</a>
+  <a href="tasks.html">Поручения</a>
+
+  <div class="bottom">
+    <a href="#">Настройки</a>
+    <div class="who">
+      <span>Артём Е.</span>
+      <form method="get" action="login.html" class="inline"><button class="ghost">Выйти</button></form>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <h1>Дашборд</h1>
+  <p class="sub">Сводка по совещаниям и поручениям. Каркас без бэкенда — цифры условные.</p>
+
+  <div class="cards">
+    <div class="card"><div class="n">12</div><div class="l">совещаний за месяц</div></div>
+    <div class="card"><div class="n">27</div><div class="l">активных поручений</div></div>
+    <div class="card danger"><div class="n">4</div><div class="l">просрочено</div></div>
+    <div class="card ok"><div class="n">41</div><div class="l">выполнено</div></div>
+  </div>
+
+  <h2>Язык совещаний</h2>
+  <p class="sub">
+    Обязательный минимум ТЗ — распознавание русского, казахского и смешанной
+    (шала-казахской) речи. Разбивка ниже — чтобы сразу было видно, не просела
+    ли обработка на каком-то из языков.
+  </p>
+  <div class="cards" style="margin-bottom:20px">
+    <div class="card"><div class="n">9</div><div class="l"><a href="meetings.html?lang=ru">русский</a></div></div>
+    <div class="card"><div class="n">1</div><div class="l"><a href="meetings.html?lang=kk">казахский</a></div></div>
+    <div class="card"><div class="n">2</div><div class="l"><a href="meetings.html?lang=mixed">смешанный (шала-қаз)</a></div></div>
+  </div>
+
+  <h2>Последние совещания</h2>
+  <div class="scroll">
+  <table>
+    <tr><th>Дата</th><th>Тема</th><th>Язык</th><th>Статус</th><th class="right">Поручений</th></tr>
+    <tr>
+      <td><a href="meeting.html">23 сен</a></td>
+      <td>Химическая промышленность и техника безопасности</td>
+      <td>рус</td>
+      <td><span class="tag ok">готово</span></td>
+      <td class="right">5</td>
+    </tr>
+    <tr>
+      <td><a href="meeting.html">18 сен</a></td>
+      <td>Доклады по производственным показателям направлений</td>
+      <td>рус</td>
+      <td><span class="tag ok">готово</span></td>
+      <td class="right">4</td>
+    </tr>
+    <tr>
+      <td><a href="meeting.html">23 сен</a></td>
+      <td>Оперативное совещание — логистика</td>
+      <td><span class="tag warn">смеш</span></td>
+      <td><span class="tag">обрабатывается</span></td>
+      <td class="right muted">—</td>
+    </tr>
+  </table>
+  </div>
+  <p class="sub" style="margin-top:12px"><a href="meetings.html">Все совещания →</a></p>
+
+  <h2>Ближайшие сроки</h2>
+  <div class="scroll">
+  <table>
+    <tr><th class="wrap">Поручение</th><th>Ответственный</th><th>Срок</th><th>Статус</th></tr>
+    <tr>
+      <td class="wrap">Разобраться с подрядчиком-нарушителем, доложить лично</td>
+      <td>Гульмира Сериковна</td>
+      <td>Пятница</td>
+      <td><span class="tag bad">просрочено</span></td>
+    </tr>
+    <tr>
+      <td class="wrap">Согласовать график поставок с проектным институтом</td>
+      <td>Айнур Каировна</td>
+      <td>26 сентября</td>
+      <td><span class="tag warn">срок завтра</span></td>
+    </tr>
+    <tr>
+      <td class="wrap">Полный аудит датчиков утечки и СИЗ на 11 площадках</td>
+      <td>Нурлан Сагатович</td>
+      <td>15 октября</td>
+      <td><span class="tag">в работе</span></td>
+    </tr>
+  </table>
+  </div>
+</main>
+
+<footer>SOCBrain · каркас фронтенда, структура на основе внутреннего проекта aster_zapis</footer>
+</body>
+</html>

@@ -14,7 +14,11 @@ class Store:
         with self.connect() as conn:
             conn.execute("CREATE TABLE IF NOT EXISTS recordings (id TEXT PRIMARY KEY, source_key TEXT UNIQUE, "
                 "title TEXT NOT NULL, meeting_date TEXT NOT NULL, filename TEXT NOT NULL, sha256 TEXT NOT NULL, "
-                "status TEXT NOT NULL DEFAULT 'queued', result TEXT, error TEXT, created_at TEXT NOT NULL)")
+                "source TEXT NOT NULL DEFAULT 'unknown', status TEXT NOT NULL DEFAULT 'queued', "
+                "result TEXT, error TEXT, created_at TEXT NOT NULL)")
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(recordings)")}
+            if "source" not in columns:
+                conn.execute("ALTER TABLE recordings ADD COLUMN source TEXT NOT NULL DEFAULT 'unknown'")
 
     @contextmanager
     def connect(self):
@@ -29,16 +33,20 @@ class Store:
         finally:
             conn.close()
 
-    def insert(self, key, title, meeting_date, filename, sha256, source_key):
+    def insert(self, key, title, meeting_date, filename, sha256, source_key, source="unknown"):
         with self.connect() as conn:
-            conn.execute("INSERT INTO recordings(id,source_key,title,meeting_date,filename,sha256,created_at) "
-                         "VALUES(?,?,?,?,?,?,?)", (key, source_key, title, meeting_date, filename, sha256,
-                                                  datetime.now(timezone.utc).isoformat()))
+            conn.execute("INSERT INTO recordings(id,source_key,title,meeting_date,filename,sha256,source,created_at) "
+                         "VALUES(?,?,?,?,?,?,?,?)", (key, source_key, title, meeting_date, filename, sha256,
+                                                  source, datetime.now(timezone.utc).isoformat()))
 
     def source(self, key):
         with self.connect() as conn:
             row = conn.execute("SELECT * FROM recordings WHERE source_key=?", (key,)).fetchone()
         return dict(row) if row else None
+
+    def set_source(self, key, source):
+        with self.connect() as conn:
+            conn.execute("UPDATE recordings SET source=? WHERE source_key=? AND source='unknown'", (source, key))
 
     def get(self, key):
         with self.connect() as conn:

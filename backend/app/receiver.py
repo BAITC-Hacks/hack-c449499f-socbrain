@@ -1,4 +1,4 @@
-"""Authenticated HTTP ingress for Cisco recordings; no STT model loaded in the API."""
+"""Authenticated HTTP ingress for meeting recordings; no STT model loaded in the API."""
 from contextlib import asynccontextmanager
 from datetime import date
 import hashlib
@@ -41,7 +41,7 @@ def create_app(api_key=None, directory=None, max_bytes=None):
     @app.post("/api/recordings", dependencies=[Depends(authorize)], status_code=201)
     def upload(file: UploadFile = File(...), title: str = Form(..., min_length=1, max_length=300),
                meeting_date: date = Form(...), participants_notified: bool = Form(False),
-               source: str = Form("cms"),
+               source: str = Form("unknown", min_length=1, max_length=50),
                source_key: str | None = Header(None, alias="Idempotency-Key", min_length=1, max_length=200)):
         path = None
         try:
@@ -49,6 +49,8 @@ def create_app(api_key=None, directory=None, max_bytes=None):
                 raise HTTPException(400, "Participants must be notified about recording and transcription")
             if not title.strip():
                 raise HTTPException(422, "Title must not be blank")
+            if not source.strip():
+                raise HTTPException(422, "Source must not be blank")
             suffix = Path(file.filename or "").suffix.lower()
             if suffix not in {".wav", ".mp3", ".mp4", ".m4a", ".ogg", ".flac", ".webm", ".opus"}:
                 raise HTTPException(400, "Unsupported audio format")
@@ -68,14 +70,16 @@ def create_app(api_key=None, directory=None, max_bytes=None):
                 raise HTTPException(400, "Empty recording")
             try:
                 app.state.store.insert(recording_id, title.strip(), meeting_date.isoformat(), path.name,
-                                       digest.hexdigest(), source_key)
+                                       digest.hexdigest(), source_key, source.strip())
             except sqlite3.IntegrityError:
                 existing = app.state.store.source(source_key) if source_key else None
                 if not existing:
                     raise
                 if (existing["sha256"] != digest.hexdigest() or existing["title"] != title.strip()
-                        or existing["meeting_date"] != meeting_date.isoformat()):
+                        or existing["meeting_date"] != meeting_date.isoformat()
+                        or existing["source"] not in {"unknown", source.strip()}):
                     raise HTTPException(409, "Idempotency key was already used for another recording") from None
+                app.state.store.set_source(source_key, source.strip())
                 path.unlink()
                 path = None
                 return {"id": existing["id"], "status": existing["status"], "duplicate": True}

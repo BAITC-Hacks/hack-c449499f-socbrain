@@ -1,0 +1,2 @@
+# Official Zoom RTMS Python SDK, MIT, Linux x86_64/macOS arm64.
+rtms==1.1.0

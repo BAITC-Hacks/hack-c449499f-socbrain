@@ -1,6 +1,6 @@
-# Приём записей Cisco и локальное распознавание
+# Приём записей Cisco/Zoom и локальное распознавание
 
-Новый HTTP-приёмник принимает закрытый файл, сохраняет его полностью и только затем создаёт
+HTTP-приёмник принимает закрытые файлы Cisco и Zoom, сохраняет файл полностью и только затем создаёт
 задание SQLite. Отдельный STT-worker использует существующий `FasterWhisperProvider` напрямую.
 Внешний OpenAI-провайдер в этом сценарии не вызывается; поведение прежней CLI не изменено.
 
@@ -18,7 +18,8 @@ docker compose -f compose.ingest.yml up -d --build receiver
 Для обоих методов `/api/recordings` нужен заголовок `X-API-Key` с SOCBRAIN_API_KEY.
 Healthcheck `/health` не проверяет наличие запущенного STT-worker.
 
-- POST `/api/recordings`: multipart `file`, `title`, `meeting_date=YYYY-MM-DD`, `participants_notified=true`.
+- POST `/api/recordings`: multipart `file`, `title`, `meeting_date=YYYY-MM-DD`, `participants_notified=true`,
+  `source` (`cms`, `zoom-cloud` или `zoom-rtms`).
 - GET `/api/recordings/{id}`: статус queued/processing/done/error; при done — язык, текст и segments с start/end/text.
 - `Idempotency-Key` необязателен, но Cisco-коннектор передаёт его всегда. Повтор того же файла с тем же ключом
   возвращает прежний id. Другие байты, название или дата с тем же ключом дают HTTP 409.
@@ -51,7 +52,7 @@ Worker требует существующий локальный каталог
 Межпроцессная блокировка допускает только один worker на volume.
 Файлы и результаты сохраняются до удаления администратором; автоматической очистки пока нет.
 
-## Связь с Cisco-коннектором
+## Связь с коннекторами совещаний
 
 В [его конфигурации](../integrations/cisco-connector/.env.example) задайте:
 
@@ -69,6 +70,10 @@ APP_IDEMPOTENT=true
 
 После доставки коннектор хранит `result.id` из этого API. По нему запрашивается транскрипт.
 Статические страницы frontend ещё не обращаются к этому API; пока результат доступен программно.
+
+[Zoom-коннектор](../integrations/zoom-connector/README.md) использует тот же `APP_UPLOAD_URL` и ключ.
+Он передаёт `source=zoom-cloud` для готовой облачной записи и `source=zoom-rtms` для WAV,
+собранного в реальном времени.
 
 ## Проверка
 

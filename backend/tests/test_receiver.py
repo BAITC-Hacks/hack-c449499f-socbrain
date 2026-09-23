@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
+import sqlite3
 
 from fastapi.testclient import TestClient
 import pytest
@@ -11,7 +12,7 @@ from app.stt.base import TranscriptResult, TranscriptSegment
 
 KEY = "test-key-" + "x" * 32
 AUTH = {"X-API-Key": KEY, "Idempotency-Key": "test-meeting-occurrence"}
-DATA = {"title": "Cisco meeting", "meeting_date": "2026-09-23", "participants_notified": "true"}
+DATA = {"title": "Cisco meeting", "meeting_date": "2026-09-23", "participants_notified": "true", "source": "cms"}
 
 
 def send(api, audio=b"complete-wav", headers=AUTH):
@@ -31,6 +32,7 @@ def test_completed_upload_enters_queue_and_is_transcribed_locally(tmp_path):
         assert process_one(app.state.store, SimpleNamespace(transcribe=transcribe))
         result = api.get("/api/recordings/" + key, headers=AUTH).json()
         assert result["status"] == "done"
+        assert result["source"] == "cms"
         assert result["result"]["segments"][0]["text"] == "Проверка"
         assert not process_one(app.state.store, None)
 
@@ -68,3 +70,19 @@ def test_auth_notice_and_error_redaction(tmp_path):
         response = api.get("/api/recordings/" + key, headers=AUTH)
         assert response.json()["status"] == "error"
         assert "SECRET" not in response.text
+
+
+def test_existing_database_gains_source_without_losing_idempotency(tmp_path):
+    path = tmp_path / "ingest.sqlite3"
+    with sqlite3.connect(path) as db:
+        db.execute("CREATE TABLE recordings (id TEXT PRIMARY KEY, source_key TEXT UNIQUE, title TEXT NOT NULL, "
+                   "meeting_date TEXT NOT NULL, filename TEXT NOT NULL, sha256 TEXT NOT NULL, "
+                   "status TEXT NOT NULL DEFAULT 'queued', "
+                   "result TEXT, error TEXT, created_at TEXT NOT NULL)")
+    app = create_app(KEY, tmp_path)
+    with TestClient(app) as api:
+        first = send(api)
+        assert first.status_code == 201
+        assert send(api).json()["id"] == first.json()["id"]
+        result = api.get("/api/recordings/" + first.json()["id"], headers=AUTH).json()
+        assert result["source"] == "cms"

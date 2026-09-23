@@ -11,7 +11,7 @@ from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .. import db
+from .. import db, vault
 from ..config import LLM_PRESETS, SECRETS, SECTIONS, coerce, is_external_url, load_overrides, settings
 from ..export import docx_export, pdf_export
 
@@ -64,7 +64,8 @@ def get_settings() -> dict:
         for section, section_fields in SECTIONS.items()
     }
     return {"values": settings.values, "fields": fields, "updated_at": db.settings_updated_at(),
-            "secrets": {section: {env: bool(os.getenv(env)) for env in envs} for section, envs in SECRETS.items()},
+            "secrets": {section: {env: vault.status(settings.data_dir, env, settings.secret_host(env)) for env in envs}
+                        for section, envs in SECRETS.items()},
             "whisper_model": settings.whisper_model}
 
 
@@ -95,6 +96,42 @@ def put_settings(section: str, body: dict) -> dict:
     return {"values": settings.values[section]}
 
 
+class SecretValue(BaseModel):
+    value: str
+
+
+ALLOWED_SECRETS = {name for names in SECRETS.values() for name in names}
+
+
+@app.put("/api/secrets/{name}")
+def put_secret(name: str, body: SecretValue) -> dict:
+    """Сохранить ключ/пароль из интерфейса. Значение шифруется и больше никогда не отдаётся —
+    только статус «задан, …ab12». Ключ привязывается к хосту, куда он будет отправляться."""
+    if name not in ALLOWED_SECRETS:
+        raise HTTPException(404, f"Неизвестный секрет {name!r}")
+    value = body.value.strip()
+    if not value:
+        raise HTTPException(400, "Пустое значение — для удаления используйте DELETE")
+    if len(value) > 4096 or any(c in value for c in "\r\n"):
+        raise HTTPException(400, "Недопустимое значение")
+    host = settings.secret_host(name)
+    if name == "SMTP_PASSWORD" and not host:
+        raise HTTPException(400, "Сначала сохраните адрес SMTP-сервера — пароль привязывается к нему")
+    vault.set_secret(settings.data_dir, name, value, host)
+    settings.reload()
+    return {"status": vault.status(settings.data_dir, name, host)}
+
+
+@app.delete("/api/secrets/{name}")
+def delete_secret(name: str) -> dict:
+    """Удалить значение, введённое в интерфейсе (значение из .env, если есть, снова станет действующим)."""
+    if name not in ALLOWED_SECRETS:
+        raise HTTPException(404, f"Неизвестный секрет {name!r}")
+    vault.clear_secret(settings.data_dir, name)
+    settings.reload()
+    return {"status": vault.status(settings.data_dir, name, settings.secret_host(name))}
+
+
 @app.post("/api/settings/mail/check")
 def check_mail() -> dict:
     """Проверить SMTP: соединение, шифрование, вход. Письмо не отправляется."""
@@ -112,10 +149,10 @@ def check_mail() -> dict:
                 smtp.ehlo()
                 steps.append("STARTTLS")
             if mail["username"]:
-                password = os.getenv("SMTP_PASSWORD", "")
+                password = settings.secret("SMTP_PASSWORD", mail["host"])
                 if not password:
                     return {"ok": False, "steps": steps,
-                            "error": "Указан логин, но SMTP_PASSWORD не задан в backend/.env"}
+                            "error": "Указан логин, но пароль не задан — введите его в форме выше"}
                 smtp.login(mail["username"], password)
                 steps.append("вход выполнен")
     except (OSError, smtplib.SMTPException) as exc:
@@ -133,7 +170,8 @@ def llm_providers() -> dict:
         "active_external": settings.llm_external,
         "presets": [{**{k: v for k, v in preset.items()}, "id": pid,
                      "external": is_external_url(preset["base_url"]) and pid != "none",
-                     "key_set": bool(os.getenv(preset["key_env"]))}
+                     "key_set": vault.status(settings.data_dir, preset["key_env"],
+                                             settings.secret_host(preset["key_env"]))["usable"]}
                     for pid, preset in LLM_PRESETS.items()],
     }
 

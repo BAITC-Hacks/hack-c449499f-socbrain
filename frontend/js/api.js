@@ -382,6 +382,68 @@ function readField(section, f) {
   return document.getElementById(id).value;
 }
 
+const SECRET_LABELS = {
+  NVIDIA_API_KEY: ["Ключ NVIDIA", "build.nvidia.com → модель → Get API Key, вида nvapi-…"],
+  OPENAI_API_KEY: ["Ключ OpenAI", "platform.openai.com → API keys, вида sk-…; им же пользуется внешнее распознавание"],
+  VLLM_API_KEY: ["Ключ vLLM", "если сервер запущен с --api-key"],
+  OLLAMA_API_KEY: ["Ключ Ollama", "обычно не нужен"],
+  LLM_API_KEY: ["Ключ LLM", ""],
+  SMTP_PASSWORD: ["Пароль SMTP", "пароль учётной записи из поля «Логин»"],
+  ZOOM_CLIENT_SECRET: ["Zoom Client Secret", ""],
+  TEAMS_CLIENT_SECRET: ["Teams Client Secret", ""],
+  MEET_KEY_FILE: ["Google Meet: ключ сервисного аккаунта", "содержимое JSON одной строкой"],
+  SED_API_KEY: ["Ключ API СЭД", ""],
+};
+
+// Поле секрета — только запись: значение уходит на сервер, обратно приходит лишь «задан, …ab12».
+function secretsBlock(section, data) {
+  let names = Object.keys(data.secrets[section] || {});
+  if (section === "llm") {
+    const provider = data.values.llm.provider;
+    const keyFor = { nvidia: "NVIDIA_API_KEY", openai: "OPENAI_API_KEY", vllm: "VLLM_API_KEY", ollama: "OLLAMA_API_KEY" };
+    // сначала ключ активного провайдера, затем облачные — их чаще всего и вставляют
+    names = [...new Set([keyFor[provider], "NVIDIA_API_KEY", "OPENAI_API_KEY"].filter(Boolean))];
+  }
+  if (!names.length) return "";
+  return `<div class="form">${names.map((name) => {
+    const st = data.secrets[section][name] || {};
+    const [label, hint] = SECRET_LABELS[name] || [name, ""];
+    const state = !st.set ? '<span class="tag">не задан</span>'
+      : !st.usable ? `<span class="tag warn">задан ${esc(st.hint)}, но привязан к ${esc(st.bound_host)} — для текущего адреса не используется</span>`
+      : `<span class="tag ok">задан ${esc(st.hint)}</span> <span class="muted" style="font-size:12px">${st.source === ".env" ? "из backend/.env" : "введён здесь" + (st.bound_host ? ", только для " + esc(st.bound_host) : "")}</span>`;
+    return `<label>${esc(label)}<small>${esc(hint)}</small></label>
+      <div class="field" data-secret="${name}">
+        <div style="margin-bottom:6px">${state}</div>
+        <input type="password" autocomplete="new-password" spellcheck="false" placeholder="${st.set ? "вставьте новый, чтобы заменить" : "вставьте ключ"}" style="width:100%;max-width:520px">
+        <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" data-act="save">Сохранить ключ</button>
+          ${st.source === "интерфейс" ? '<button type="button" class="ghost" data-act="clear">Удалить</button>' : ""}
+          <span class="muted" data-msg></span>
+        </div>
+        <div class="src">Хранится зашифрованным и больше не показывается; <code>${name}</code></div>
+      </div>`;
+  }).join("")}</div>`;
+}
+
+function wireSecrets(root, refresh) {
+  root.querySelectorAll("[data-secret]").forEach((box) => {
+    const name = box.dataset.secret;
+    const input = box.querySelector("input");
+    const msg = box.querySelector("[data-msg]");
+    const run = async (method) => {
+      msg.textContent = "…";
+      const r = await fetch(`/api/secrets/${name}`, { method, headers: { "Content-Type": "application/json" },
+        body: method === "PUT" ? JSON.stringify({ value: input.value }) : undefined });
+      input.value = "";  // значение не держим в странице дольше необходимого
+      if (!r.ok) { msg.textContent = (await r.json().catch(() => ({}))).detail || r.statusText; return; }
+      refresh();
+    };
+    box.querySelector('[data-act="save"]').onclick = () => (input.value.trim() ? run("PUT") : (msg.textContent = "Вставьте ключ"));
+    box.querySelector('[data-act="clear"]')?.addEventListener("click", () => run("DELETE"));
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); box.querySelector('[data-act="save"]').click(); } });
+  });
+}
+
 function renderForm(section, data, onSaved) {
   const root = document.getElementById(`form-${section}`);
   if (!root) return;
@@ -391,12 +453,11 @@ function renderForm(section, data, onSaved) {
   const body = fields.map((f) => f.widget === "header"
     ? `<div style="grid-column:1/-1;margin-top:6px"><b>${esc(f.label)}</b><div class="muted" style="font-size:12px">${esc(f.hint || "")}</div></div>`
     : fieldHtml(section, f, values[f.name], data.fields[section][f.name])).join("");
-  const secretRows = secrets && section !== "llm" ? `<div style="grid-column:1/-1" class="muted">Секреты в backend/.env: ${Object.entries(secrets)
-    .map(([k, set]) => `<code>${k}</code> ${set ? '<span class="tag ok">задан</span>' : '<span class="tag">не задан</span>'}`).join(" · ")}</div>` : "";
-  root.innerHTML = `<form class="form" id="frm-${section}">${body}${secretRows}
+  root.innerHTML = `<form class="form" id="frm-${section}">${body}
     <div class="actions"><button type="submit">Сохранить</button>
       <button type="button" class="ghost" id="rst-${section}" title="Убрать значения, заданные здесь, — вернуться к backend/.env">Сбросить к .env</button>
-      <span class="muted" id="msg-${section}"></span></div></form>`;
+      <span class="muted" id="msg-${section}"></span></div></form>${secretsBlock(section, data)}`;
+  wireSecrets(root, () => api("/api/settings").then((fresh) => { renderForm(section, fresh, onSaved); if (onSaved) onSaved(fresh); }));
 
   const submit = async (payload) => {
     const msg = document.getElementById(`msg-${section}`);
@@ -455,8 +516,9 @@ async function renderChecks(data, cfg) {
     ["Анализ стенограммы в контуре", llm.provider === "none" ? "warn" : cfg.llm_external ? "bad" : "ok",
       llm.provider === "none" ? "LLM отключена — поручения только по шаблонам"
         : cfg.llm_external ? `текст стенограммы уходит во внешний API (${llm.provider}) — только для разработки` : "LLM в своей сети", "int-ai"],
-    ...(cfg.llm_external && llmKeyEnv ? [["Ключ LLM задан", data.secrets.llm[llmKeyEnv] ? "ok" : "bad",
-      data.secrets.llm[llmKeyEnv] ? llmKeyEnv : `нет ${llmKeyEnv} в backend/.env — анализ не работает`, "int-ai"]] : []),
+    ...(cfg.llm_external && llmKeyEnv ? [["Ключ LLM задан", data.secrets.llm[llmKeyEnv]?.usable ? "ok" : "bad",
+      data.secrets.llm[llmKeyEnv]?.usable ? `${llmKeyEnv} ${data.secrets.llm[llmKeyEnv].hint}`
+        : `нет ключа ${llmKeyEnv} — вставьте его в разделе «Распознавание речи и ИИ»`, "int-ai"]] : []),
     ["Соединение защищено (HTTPS)", location.protocol === "https:" ? "ok" : "warn",
       location.protocol === "https:" ? "" : "страница открыта по HTTP — протоколы идут по сети открытым текстом", null],
     ["Почта подключена", data.values.mail.host ? "ok" : "warn",
@@ -492,7 +554,7 @@ async function renderAi() {
     <tr><td>Адрес</td><td><code>${esc(llmInfo.active_base_url)}</code> ${placeTag(llmInfo.active_external)}</td></tr>
     <tr><td>Ключ</td><td>${llmInfo.active_external && active.key_env
       ? (active.key_set ? `<span class="tag ok">задан</span> <code>${esc(active.key_env)}</code>`
-                        : `<span class="tag bad">не задан</span> впишите <code>${esc(active.key_env)}</code> в backend/.env и выполните <code>docker compose up -d</code>`)
+                        : `<span class="tag bad">не задан</span> вставьте ключ в поле ниже`)
       : '<span class="tag">не требуется</span>'}</td></tr>
   </table></div>`;
 

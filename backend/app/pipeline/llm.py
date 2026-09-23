@@ -95,7 +95,8 @@ def check() -> dict:
         result["error"] = "LLM отключена (LLM_PROVIDER=none)"
         return result
     if settings.llm_requires_key and not settings.llm_api_key:
-        result["error"] = f"Не задан ключ: впишите {settings.llm_api_key_env}=… в backend/.env и перезапустите worker"
+        result["error"] = (f"Не задан ключ {settings.llm_api_key_env} для {settings.llm_base_url}: вставьте его в поле "
+                           "«Ключ» выше (или в backend/.env)")
         return result
     headers = {"Authorization": f"Bearer {settings.llm_api_key}"} if settings.llm_api_key else {}
     try:

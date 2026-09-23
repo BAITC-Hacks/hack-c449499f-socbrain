@@ -1,5 +1,3 @@
-import os
-
 from .base import STTProvider, TranscriptResult, TranscriptSegment, TranscriptWord
 
 __all__ = ["STTProvider", "TranscriptResult", "TranscriptSegment", "TranscriptWord", "get_provider"]
@@ -18,7 +16,7 @@ def get_provider() -> STTProvider:
     if provider == "external":
         from .external_openai import OpenAIWhisperProvider
 
-        return OpenAIWhisperProvider(api_key=os.getenv("OPENAI_API_KEY", ""))
+        return OpenAIWhisperProvider(api_key=settings.secret("OPENAI_API_KEY", "https://api.openai.com/v1"))
 
     if provider == "local":
         from .local_faster_whisper import FasterWhisperProvider

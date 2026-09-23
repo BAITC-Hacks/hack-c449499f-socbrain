@@ -103,7 +103,8 @@ SECTIONS: dict[str, dict[str, tuple]] = {
     },
 }
 
-# Секреты по разделам: только имена переменных .env, значения интерфейсу не отдаются.
+# Секреты по разделам. Задаются в .env или в интерфейсе (app/vault.py: шифрование, привязка к хосту);
+# значения интерфейсу не отдаются никогда.
 SECRETS = {
     "mail": ["SMTP_PASSWORD"],
     "integrations": ["ZOOM_CLIENT_SECRET", "TEAMS_CLIENT_SECRET", "MEET_KEY_FILE", "SED_API_KEY"],
@@ -194,7 +195,8 @@ class Settings:
         preset = LLM_PRESETS.get(self.llm_provider, LLM_PRESETS["ollama"])
         self.llm_base_url = (llm["base_url"] or preset["base_url"]).rstrip("/")
         self.llm_api_key_env = _env("LLM_API_KEY_ENV", preset["key_env"])
-        self.llm_api_key = os.getenv(self.llm_api_key_env, "")
+        # Ключ из интерфейса (зашифрован, привязан к хосту) или из .env
+        self.llm_api_key = self.secret(self.llm_api_key_env, self.llm_base_url)
         self.llm_model = llm["model"] or preset["model"]
         self.llm_timeout = float(llm["timeout"])
         # Облачным адресам нужен ключ; NIM/vLLM в своём контуре обычно без него.
@@ -202,6 +204,19 @@ class Settings:
 
         self.remind_days_before = values["processing"]["remind_days_before"]
         self.audio_retention_days = values["processing"]["audio_retention_days"]
+
+    def secret(self, name: str, host: str | None = None) -> str:
+        from . import vault
+        return vault.get_secret(self.data_dir, name, host)
+
+    def secret_host(self, name: str) -> str | None:
+        """Куда будет отправляться секрет — к этому хосту он и привязывается при сохранении."""
+        if name == "SMTP_PASSWORD":
+            return self.values["mail"]["host"] or None
+        if name == self.llm_api_key_env:
+            return self.llm_base_url
+        owner = next((p for p in LLM_PRESETS.values() if p["key_env"] == name), None)
+        return owner["base_url"] if owner else None
 
     @property
     def llm_external(self) -> bool:

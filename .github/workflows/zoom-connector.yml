@@ -1,0 +1,26 @@
+name: zoom-connector
+on:
+  push:
+    paths: ['integrations/zoom-connector/**', 'backend/**', '.github/workflows/zoom-connector.yml']
+  pull_request:
+    paths: ['integrations/zoom-connector/**', 'backend/**', '.github/workflows/zoom-connector.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r integrations/zoom-connector/requirements.txt -r integrations/zoom-connector/requirements-dev.txt
+      - run: python -m pytest tests -q
+        working-directory: integrations/zoom-connector
+      - run: python -m pytest tests -q
+        working-directory: backend
+      - run: python scripts/init_config.py
+        working-directory: integrations/zoom-connector
+      - run: docker compose --profile rtms build --quiet
+        working-directory: integrations/zoom-connector

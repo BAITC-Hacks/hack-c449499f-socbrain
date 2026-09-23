@@ -1,0 +1,40 @@
+name: socbrain-zoom-connector
+services:
+  connector:
+    build: {context: ., target: api}
+    image: local/socbrain-zoom-connector:0.1.0
+    env_file: .env
+    ports: ["127.0.0.1:8021:8021"]
+    volumes: ["zoom-data:/data"]
+    read_only: true
+    tmpfs: /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    init: true
+    restart: unless-stopped
+  worker:
+    build: {context: ., target: worker}
+    image: local/socbrain-zoom-worker:0.1.0
+    env_file: .env
+    volumes: ["zoom-data:/data"]
+    read_only: true
+    tmpfs: /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    init: true
+    restart: unless-stopped
+  rtms-worker:
+    profiles: [rtms]
+    build: {context: ., target: rtms-worker}
+    image: local/socbrain-zoom-rtms:0.1.0
+    env_file: .env
+    volumes: ["zoom-data:/data"]
+    read_only: true
+    tmpfs: /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    init: true
+    stop_grace_period: 30s
+    restart: unless-stopped
+volumes:
+  zoom-data:

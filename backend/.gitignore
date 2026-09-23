@@ -3,3 +3,7 @@
 __pycache__/
 *.pyc
 *.transcript.txt
+.env.ingest
+models/
+data/
+.pytest_cache/

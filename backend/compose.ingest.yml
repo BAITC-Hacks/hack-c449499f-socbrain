@@ -1,0 +1,36 @@
+name: socbrain-ingest
+services:
+  receiver:
+    build:
+      context: .
+      dockerfile: Dockerfile.ingest
+      target: receiver
+    env_file: .env.ingest
+    ports: ["127.0.0.1:8020:8020"]
+    volumes: ["ingest-data:/data"]
+    read_only: true
+    tmpfs: /tmp
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    restart: unless-stopped
+  stt-worker:
+    profiles: [stt]
+    build:
+      context: .
+      dockerfile: Dockerfile.ingest
+      target: stt-worker
+    env_file: .env.ingest
+    environment:
+      HF_HUB_OFFLINE: "1"
+    volumes:
+      - ingest-data:/data
+      - ./models:/models:ro
+    read_only: true
+    tmpfs: /tmp
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    init: true
+    stop_grace_period: 60s
+    restart: unless-stopped
+volumes:
+  ingest-data:

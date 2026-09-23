@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+data/
+*.wav
+*.mp3
+*.mp4
+*.sqlite3*
+*.pem
+*.key
+certs/*
+!certs/README.md
+dist/

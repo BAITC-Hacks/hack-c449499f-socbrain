@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Дашборд · SOCBrain</title>
+<title>Дашборд · Jinalys AI</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
 <nav class="side">
-  <div class="brand">SOCBrain<small>автопротоколирование совещаний</small></div>
+  <div class="brand">Jinalys AI<small>автопротоколирование совещаний</small></div>
 
   <a href="index.html" class="on">Дашборд</a>
   <a href="meetings.html">Совещания</a>
@@ -18,8 +18,8 @@
   <div class="bottom">
     <a href="settings.html">Настройки</a>
     <div class="who">
-      <span>Артём Е.</span>
-      <form method="get" action="login.html" class="inline"><button class="ghost">Выйти</button></form>
+      <span id="who-name">—</span>
+      <button class="ghost" id="logout-btn" type="button">Выйти</button>
     </div>
   </div>
 </nav>
@@ -102,6 +102,13 @@
   </div>
 </main>
 
-<footer>SOCBrain · каркас фронтенда, структура на основе внутреннего проекта aster_zapis</footer>
+<footer>Jinalys AI · каркас фронтенда, структура на основе внутреннего проекта aster_zapis</footer>
+
+<script>
+document.getElementById("who-name").textContent = sessionStorage.getItem("socbrain_name") || "Артём Е.";
+document.getElementById("logout-btn").addEventListener("click", () => {
+  window.location.href = "login.html";
+});
+</script>
 </body>
 </html>

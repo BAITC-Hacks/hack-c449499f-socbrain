@@ -28,7 +28,7 @@ def create_app(api_key=None, directory=None, max_bytes=None):
         app.state.store = Store(directory)
         yield
 
-    app = FastAPI(title="SOCBrain Recording Receiver", lifespan=lifespan)
+    app = FastAPI(title="Jinalys AI Recording Receiver", lifespan=lifespan)
 
     def authorize(value=Depends(auth)):
         if not value or not secrets.compare_digest(value.encode(), key.encode()):

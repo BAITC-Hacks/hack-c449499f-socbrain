@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Настройки · SOCBrain</title>
+<title>Настройки · Jinalys AI</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
 <nav class="side">
-  <div class="brand">SOCBrain<small>автопротоколирование совещаний</small></div>
+  <div class="brand">Jinalys AI<small>автопротоколирование совещаний</small></div>
 
   <a href="index.html">Дашборд</a>
   <a href="meetings.html">Совещания</a>
@@ -18,8 +18,8 @@
   <div class="bottom">
     <a href="settings.html" class="on">Настройки</a>
     <div class="who">
-      <span>Артём Е.</span>
-      <form method="get" action="login.html" class="inline"><button class="ghost">Выйти</button></form>
+      <span id="who-name">—</span>
+      <button class="ghost" id="logout-btn" type="button">Выйти</button>
     </div>
   </div>
 </nav>
@@ -350,7 +350,7 @@
         <div class="scroll">
         <table>
           <tr><th class="wrap">Поле</th><th class="wrap">Пояснение</th></tr>
-          <tr><td>Заголовок</td><td class="wrap muted">SOCBrain</td></tr>
+          <tr><td>Заголовок</td><td class="wrap muted">Jinalys AI</td></tr>
           <tr><td>Подзаголовок</td><td class="wrap muted">Автопротоколирование совещаний — одна строка, пусто и правильно, если сказать нечего</td></tr>
           <tr><td>Что делать, если не получается войти</td><td class="wrap muted">Самая полезная строка на экране — без неё человек звонит первому попавшемуся коллеге</td></tr>
           <tr><td>Правовая сноска</td><td class="wrap muted">Мелким шрифтом внизу: предупреждение о записи действий и ссылка на политику обработки данных совещаний</td></tr>
@@ -447,96 +447,76 @@
       <!-- ======================= РАСПОЗНАВАНИЕ РЕЧИ И ИИ ======================= -->
       <section class="settings-panel" data-tab-step="int-ai">
         <h2 style="margin-top:0">Распознавание речи и ИИ</h2>
-        <p class="sub">
-          Какие модели подключены, где применяются и локальные ли они —
-          прямой запрет ТЗ: "передача аудио/текста во внешние облачные API запрещена".
-        </p>
+        <p class="sub">Языки: рус · каз · смешанный. К сдаче — только self-hosted (<code>local</code>), внешние API сейчас временно для разработки.</p>
 
-        <h3>Подключённые модели</h3>
+        <div id="ai-conn-status" class="note" style="display:none;"></div>
+
         <div class="scroll">
         <table>
-          <tr><th class="wrap">Модель</th><th>Назначение</th><th>Расположение</th><th>Состояние</th></tr>
-          <tr>
-            <td>faster-whisper large-v3</td><td>распознавание речи (STT)</td>
-            <td><span class="tag ok">локальная</span></td><td><span class="tag ok">работает</span></td>
-          </tr>
-          <tr>
-            <td>pyannote.audio</td><td>диаризация — кто говорит</td>
-            <td><span class="tag ok">локальная</span></td><td><span class="tag ok">работает</span></td>
-          </tr>
-          <tr>
-            <td>OpenAI Whisper API</td><td>STT, временно — обкатка пайплайна</td>
-            <td><span class="tag bad">внешняя</span></td><td><span class="tag warn">только для разработки</span></td>
-          </tr>
-        </table>
-        </div>
-        <p class="sub">
-          Модель считается локальной, если адрес службы ведёт в свою сеть
-          (localhost, 127.*, 10.*, 192.168.*) — признак вычисляется по адресу,
-          а не задаётся переключателем: администратор ошибётся, адрес не соврёт.
-        </p>
-
-        <h3>Языки распознавания</h3>
-        <div class="scroll">
-        <table>
-          <tr><th>Язык</th><th class="wrap">Статус</th></tr>
-          <tr><td>Русский</td><td><span class="tag ok">включён</span></td></tr>
-          <tr><td>Казахский</td><td><span class="tag ok">включён</span></td></tr>
-          <tr><td>Смешанный (шала-қаз)</td><td><span class="tag warn">включён · точность ниже</span></td></tr>
+          <tr><th class="wrap">Название</th><th>Тип</th><th>Модель</th><th>По умолчанию</th><th>Последний тест</th><th>Действия</th></tr>
+          <tbody id="ai-conn-rows">
+            <tr><td colspan="6" class="muted">Загрузка...</td></tr>
+          </tbody>
         </table>
         </div>
 
-        <h3>Что нельзя отправлять во внешние модели</h3>
-        <div class="scroll">
-        <table>
-          <tr><th class="wrap">Категория</th><th>Разрешено отправлять во внешние API</th></tr>
-          <tr><td>Аудио совещаний</td><td><span class="tag bad">запрещено</span></td></tr>
-          <tr><td>Расшифровка (текст)</td><td><span class="tag bad">запрещено</span></td></tr>
-          <tr><td>ФИО участников и поручения</td><td><span class="tag bad">запрещено</span></td></tr>
-        </table>
-        </div>
-        <div class="note warn">Строка "OpenAI Whisper API" выше — временная, для разработки на своих тестовых записях. К сдаче переключаем STT_PROVIDER на local — см. backend/README.md.</div>
-
-        <h3>Дополнительно (из ТЗ)</h3>
-        <div class="scroll">
-        <table>
-          <tr><th class="wrap">Настройка</th><th class="wrap">Пояснение</th></tr>
-          <tr><td>Голосовая идентификация по тембру</td><td class="wrap muted">Выключено — сверх диаризации, узнаёт конкретного человека по голосу между совещаниями (voiceprints). Есть референсная реализация в Analyz-zapis</td></tr>
-        </table>
-        </div>
+        <form id="ai-conn-form" style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin:16px 0;">
+          <div><label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px;">Название</label>
+            <input type="text" name="name" placeholder="Моя модель" required></div>
+          <div><label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px;">Тип</label>
+            <select name="type">
+              <option value="external_openai">external_openai</option>
+              <option value="external_nvidia">external_nvidia</option>
+              <option value="local_faster_whisper">local_faster_whisper</option>
+            </select>
+          </div>
+          <div><label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px;">Модель</label>
+            <input type="text" name="model" placeholder="whisper-1 / large-v3"></div>
+          <div><label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px;">API-ключ</label>
+            <input type="password" name="api_key" placeholder="если нужен"></div>
+          <button type="submit">Добавить</button>
+        </form>
       </section>
 
       <!-- ======================= ВНЕШНИЕ СИСТЕМЫ ======================= -->
       <section class="settings-panel" data-tab-step="int-systems">
         <h2 style="margin-top:0">Внешние системы</h2>
         <p class="sub">
-          Обмен по API с тем, что уже работает в организации: платформы
-          видеоконференций и СЭД — оба явно названы в "Дополнительно" ТЗ.
+          Платформы видеоконференций — названы в "Дополнительно" ТЗ. Оба
+          коннектора ниже реально реализованы командой (не макет — код в
+          <code>integrations/</code>, CI в <code>.github/workflows/</code>),
+          просто ещё не подключены на этом стенде.
         </p>
 
         <div class="scroll">
         <table>
-          <tr><th>Подключение</th><th class="wrap">Где используется</th><th>Состояние</th><th>Признак проверки</th></tr>
+          <tr><th>Подключение</th><th class="wrap">Что делает</th><th>Состояние</th><th class="wrap">Где код</th></tr>
           <tr>
-            <td>Zoom<br><span class="muted">выдача временного токена</span></td>
-            <td class="wrap">приём записи совещания по вебхуку</td>
+            <td>Zoom Connector<br><span class="muted">Cloud Recording + RTMS</span></td>
+            <td class="wrap">Забирает готовые Zoom Cloud Recordings по вебхуку <code>recording.completed</code>, либо принимает живой аудиопоток через Realtime Media Streams (RTMS) с транскриптом и именами говорящих; готовый WAV уходит в общий приёмник совещаний</td>
             <td><span class="tag">не подключено</span></td>
-            <td class="muted">адрес проверен</td>
+            <td class="wrap muted"><code>integrations/zoom-connector/</code> · порт 8021 · Server-to-Server OAuth</td>
           </tr>
           <tr>
-            <td>СЭД<br><span class="muted">REST с ключом в заголовке</span></td>
-            <td class="wrap">выгрузка протокола, за пределами обязательной части ТЗ</td>
+            <td>Cisco CMS Connector<br><span class="muted">SIP-ассистент + API</span></td>
+            <td class="wrap">Подключается SIP-ассистентом к комнате Cisco Meeting Server по расписанию из CMS Scheduler, записывает входящее аудио, отправляет WAV во внутренний приёмник — без внешних облачных сервисов записи</td>
             <td><span class="tag">не подключено</span></td>
-            <td class="muted">служба своя — адрес зависит от установки</td>
+            <td class="wrap muted"><code>integrations/cisco-connector/</code> · порт 8010</td>
           </tr>
         </table>
         </div>
 
-        <div class="note">
-          <b>Сборник систем.</b> Администратор выбирает службу, а не протокол:
-          "Zoom", а не "REST с OAuth". Адрес, где взять ключ и особенность
-          (Zoom — "запись отдаётся частями по вебхуку recording.completed")
-          уже заполнены шаблоном; значения можно править.
+        <div class="note ok">
+          Оба коннектора работают внутри контура — соответствуют ограничению
+          ТЗ на self-hosted обработку: сами не распознают речь и не вызывают
+          облачные модели, только доставляют аудио в наш приёмник
+          (<code>backend/INGEST.md</code>), дальше распознаёт наш собственный STT.
+        </div>
+
+        <div class="note warn">
+          У каждого свой CI (<code>.github/workflows/zoom-connector.yml</code>,
+          <code>.github/workflows/cisco-connector.yml</code>) — тесты гоняются
+          на пуш в соответствующую папку, без обращения к реальному Zoom/Cisco.
         </div>
       </section>
 
@@ -547,7 +527,7 @@
 
         <div class="scroll">
         <table>
-          <tr><td>Система</td><td>SOCBrain</td></tr>
+          <tr><td>Система</td><td>Jinalys AI</td></tr>
           <tr><td>Версия</td><td><code>0.1.0-proto</code></td></tr>
           <tr><td>Дата сборки</td><td><code>2026-09-23</code></td></tr>
           <tr><td>Среда выполнения</td><td class="muted">каркас без бэкенда</td></tr>
@@ -723,47 +703,158 @@
           "Очистить"/"Отключить" в разделе нет и не может быть — ни для кого.
         </div>
 
-        <h3>Отбор</h3>
-        <div class="filters">
-          <div><label>период</label>
-            <select><option>сегодня</option><option>неделя</option><option>месяц</option><option>3 месяца</option></select>
-          </div>
-          <div><label>категория</label>
-            <select><option>любая</option><option>вход и сессии</option><option>совещания</option><option>поручения</option><option>справочник сотрудников</option></select>
-          </div>
-          <div><label>исход</label>
-            <select><option>любой</option><option>выполнено</option><option>отказано</option><option>ошибка</option></select>
-          </div>
-        </div>
+        <h3>Записи <span class="tag ok">реальные, из backend</span></h3>
+        <p class="sub">Читает <code>GET /api/access-log</code> — вход/выход и изменения ИИ-подключений уже пишутся туда по-настоящему (см. соответствующую вкладку в "Интеграции").</p>
+        <button type="button" id="audit-refresh" class="ghost">Обновить</button>
 
-        <div class="scroll">
+        <div class="scroll" style="margin-top:12px;">
         <table>
-          <tr><th>№</th><th>Время</th><th>Событие</th><th>Исход</th><th>Кто</th><th class="wrap">Над чем</th></tr>
-          <tr>
-            <td>1042</td><td class="muted">23.09 10:14</td><td>meeting.uploaded</td>
-            <td><span class="tag ok">выполнено</span></td><td>Артём Е.</td>
-            <td class="wrap">Химическая промышленность и ТБ</td>
-          </tr>
-          <tr>
-            <td>1041</td><td class="muted">23.09 10:15</td><td>meeting.export</td>
-            <td><span class="tag ok">выполнено</span></td><td>Артём Е.</td>
-            <td class="wrap">Химическая промышленность и ТБ → PDF</td>
-          </tr>
-          <tr>
-            <td>1040</td><td class="muted">22.09 18:02</td><td>employees.import</td>
-            <td><span class="tag ok">выполнено</span></td><td>Артём Е.</td>
-            <td class="wrap">142 строки, пакет #7</td>
-          </tr>
+          <tr><th>№</th><th>Время</th><th>Кто</th><th>Действие</th><th>Исход</th><th class="wrap">Сообщение</th></tr>
+          <tbody id="audit-rows">
+            <tr><td colspan="6" class="muted">Загрузка...</td></tr>
+          </tbody>
         </table>
         </div>
-        <p class="sub">Найдено записей: 3 · из них отказов: 0 · <a href="#">Выгрузить за период</a></p>
+        <p class="sub" id="audit-summary"></p>
       </section>
 
     </div>
   </div>
 </main>
 
-<footer>SOCBrain · каркас фронтенда, структура и формулировки — из внутреннего проекта aster_zapis и методологии Promt_master</footer>
+<footer>Jinalys AI · каркас фронтенда, структура и формулировки — из внутреннего проекта aster_zapis и методологии Promt_master</footer>
 <script src="js/app.js"></script>
+<script src="js/api.js"></script>
+<script>
+document.getElementById("who-name").textContent = sessionStorage.getItem("socbrain_name") || "Артём Е.";
+document.getElementById("logout-btn").addEventListener("click", () => {
+  window.location.href = "login.html";
+});
+
+// --- ИИ-подключения (int-ai) --------------------------------------------
+
+function connTypeTag(type) {
+  return { external_openai: "внешняя", external_nvidia: "внешняя", local_faster_whisper: "локальная" }[type] || type;
+}
+
+async function loadConnections() {
+  const rowsEl = document.getElementById("ai-conn-rows");
+  try {
+    const rows = await apiFetch("/api/ai-connections");
+    if (!rows.length) {
+      rowsEl.innerHTML = '<tr><td colspan="6" class="muted">Пока ни одного подключения — добавь ниже</td></tr>';
+      return;
+    }
+    rowsEl.innerHTML = rows.map((r) => `
+      <tr>
+        <td>${r.name}</td>
+        <td><span class="tag ${r.type === 'local_faster_whisper' ? 'ok' : 'warn'}">${r.type}</span></td>
+        <td class="muted">${r.model || '—'}</td>
+        <td>${r.is_default ? '<span class="tag ok">по умолчанию</span>' : ''}</td>
+        <td class="muted">${r.last_checked_at ? (r.last_check_ok ? '✓ ' : '✗ ') + (r.last_check_message || '') : 'не проверялось'}</td>
+        <td style="white-space:nowrap;">
+          <button type="button" class="ghost" data-test="${r.id}">Тест</button>
+          <button type="button" class="ghost" data-default="${r.id}">По умолчанию</button>
+        </td>
+      </tr>
+    `).join("");
+  } catch (err) {
+    rowsEl.innerHTML = `<tr><td colspan="6" class="muted">Не удалось загрузить: ${err.message}</td></tr>`;
+  }
+}
+
+document.getElementById("ai-conn-rows").addEventListener("click", async (e) => {
+  const testId = e.target.getAttribute("data-test");
+  const defId = e.target.getAttribute("data-default");
+  const statusEl = document.getElementById("ai-conn-status");
+
+  if (testId) {
+    e.target.disabled = true;
+    e.target.textContent = "Проверяю...";
+    try {
+      const res = await apiFetch(`/api/ai-connections/${testId}/test`, { method: "POST" });
+      statusEl.className = res.ok ? "note ok" : "note bad";
+      statusEl.textContent = res.message;
+      statusEl.style.display = "block";
+    } catch (err) {
+      statusEl.className = "note bad";
+      statusEl.textContent = err.message;
+      statusEl.style.display = "block";
+    }
+    loadConnections();
+  }
+
+  if (defId) {
+    try {
+      await apiFetch(`/api/ai-connections/${defId}/default`, { method: "POST" });
+      loadConnections();
+    } catch (err) {
+      statusEl.className = "note bad";
+      statusEl.textContent = err.message;
+      statusEl.style.display = "block";
+    }
+  }
+});
+
+document.getElementById("ai-conn-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const statusEl = document.getElementById("ai-conn-status");
+  try {
+    await apiFetch("/api/ai-connections", {
+      method: "POST",
+      body: JSON.stringify({
+        name: form.name.value,
+        type: form.type.value,
+        model: form.model.value || null,
+        api_key: form.api_key.value || null,
+      }),
+    });
+    form.reset();
+    statusEl.className = "note ok";
+    statusEl.textContent = "Подключение добавлено";
+    statusEl.style.display = "block";
+    loadConnections();
+  } catch (err) {
+    statusEl.className = "note bad";
+    statusEl.textContent = err.message;
+    statusEl.style.display = "block";
+  }
+});
+
+// --- Журнал доступа (usr-audit) -----------------------------------------
+
+async function loadAuditLog() {
+  const rowsEl = document.getElementById("audit-rows");
+  const summaryEl = document.getElementById("audit-summary");
+  try {
+    const rows = await apiFetch("/api/access-log?limit=100");
+    if (!rows.length) {
+      rowsEl.innerHTML = '<tr><td colspan="6" class="muted">Записей ещё нет</td></tr>';
+      summaryEl.textContent = "";
+      return;
+    }
+    rowsEl.innerHTML = rows.map((r) => `
+      <tr>
+        <td>${r.id}</td>
+        <td class="muted">${r.at}</td>
+        <td>${r.actor}</td>
+        <td>${r.action}</td>
+        <td><span class="tag ${r.outcome === 'success' ? 'ok' : 'bad'}">${r.outcome === 'success' ? 'выполнено' : 'отказано'}</span></td>
+        <td class="wrap muted">${r.message || ''}</td>
+      </tr>
+    `).join("");
+    const failed = rows.filter((r) => r.outcome !== "success").length;
+    summaryEl.textContent = `Найдено записей: ${rows.length} · из них отказов: ${failed}`;
+  } catch (err) {
+    rowsEl.innerHTML = `<tr><td colspan="6" class="muted">Не удалось загрузить: ${err.message}</td></tr>`;
+  }
+}
+
+document.getElementById("audit-refresh").addEventListener("click", loadAuditLog);
+
+loadConnections();
+loadAuditLog();
+</script>
 </body>
 </html>

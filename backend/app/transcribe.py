@@ -13,7 +13,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from app.stt import get_provider
+from app.ai_connections import get_default_provider_or_env_fallback
 
 
 def format_timestamp(seconds: float) -> str:
@@ -33,7 +33,7 @@ def main() -> None:
 
     load_dotenv()
 
-    provider = get_provider()
+    provider = get_default_provider_or_env_fallback()
     print(f"Распознаю {audio_path.name} через {type(provider).__name__}...")
 
     result = provider.transcribe(audio_path)

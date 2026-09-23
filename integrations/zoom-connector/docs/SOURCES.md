@@ -13,6 +13,6 @@
 версия закреплена в `requirements-rtms.txt`. Образ проверяет импорт SDK во время сборки.
 
 Локально проверяются подписи webhook, URL validation, идемпотентная очередь, приоритет аудиофайла,
-OAuth/API pagination, объединение календаря, безопасный redirect загрузки, доставка в SOCBrain,
+OAuth/API pagination, объединение календаря, безопасный redirect загрузки, доставка в Jinalys AI,
 WAV 16 kHz и JSONL с именем участника. Без реквизитов Zoom невозможно подтвердить реальные scopes,
 Cloud Recording download и RTMS handshake; они требуют приёмочного теста в аккаунте заказчика.

@@ -27,11 +27,11 @@ class Delivery:
                       "participants_notified": "true", "source": source},
                 files={"file": (path.name, audio, "audio/wav" if path.suffix == ".wav" else "application/octet-stream")})
         if not 200 <= response.status_code < 300:
-            raise DeliveryError(f"SOCBrain receiver returned HTTP {response.status_code}")
+            raise DeliveryError(f"Jinalys AI receiver returned HTTP {response.status_code}")
         try:
             data = response.json()
         except ValueError:
-            raise DeliveryError("SOCBrain receiver returned invalid JSON") from None
+            raise DeliveryError("Jinalys AI receiver returned invalid JSON") from None
         if not isinstance(data, dict) or not isinstance(data.get("id"), str):
-            raise DeliveryError("SOCBrain receiver returned no recording ID")
+            raise DeliveryError("Jinalys AI receiver returned no recording ID")
         return {"id": data["id"]}

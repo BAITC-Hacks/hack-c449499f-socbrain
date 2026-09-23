@@ -39,7 +39,7 @@ Zoom выполняет `endpoint.url_validation`; коннектор возвр
 галерея и active speaker не создают дубли одного протокола.
 
 Webhook сохраняет задание и отвечает сразу. Worker получает новый OAuth token, скачивает файл по
-HTTPS с ограничением `ZOOM_MAX_DOWNLOAD_BYTES` и передаёт его в SOCBrain с `Idempotency-Key`.
+HTTPS с ограничением `ZOOM_MAX_DOWNLOAD_BYTES` и передаёт его в Jinalys AI с `Idempotency-Key`.
 OAuth заголовок удаляется перед переходом на стороннее object storage.
 
 ## RTMS
@@ -61,6 +61,6 @@ RTMS-worker запрашивает mixed L16 PCM, 16 kHz, mono. Он сохра�
 - `{stream-id}.transcript.jsonl` — живые реплики с именами;
 - `{stream-id}.events.jsonl` — active speaker и вход/выход участников.
 
-После остановки WAV отправляется в SOCBrain. Live-транскрипт доступен через API коннектора ещё во
+После остановки WAV отправляется в Jinalys AI. Live-транскрипт доступен через API коннектора ещё во
 время встречи. Файлы содержат данные совещаний и должны находиться на зашифрованном томе с политикой
 срока хранения.

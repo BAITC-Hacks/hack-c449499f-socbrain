@@ -23,7 +23,7 @@ def create_app(settings=None, store=None):
         app.state.store = store or Store(settings.data_dir)
         yield
 
-    app = FastAPI(title="SOCBrain Zoom Connector", version="0.1.0", lifespan=lifespan,
+    app = FastAPI(title="Jinalys AI Zoom Connector", version="0.1.0", lifespan=lifespan,
                   description="Zoom Cloud Recording, calendar and RTMS event connector")
 
     def authorize(value=Depends(auth)):

@@ -103,5 +103,5 @@ docker compose run --rm -v "$PWD/tests:/tests:ro" assistant python /tests/sip_sm
 сертификаты и SQLite не входят в Git. Контейнеры запускаются непривилегированным пользователем.
 Для другого сервера подключите внутренний HTTPS reverse proxy; по умолчанию API доступен только на localhost.
 
-В этом репозитории также добавлен [HTTP-приёмник SOCBrain и локальный STT-worker](../../backend/INGEST.md).
+В этом репозитории также добавлен [HTTP-приёмник Jinalys AI и локальный STT-worker](../../backend/INGEST.md).
 Для него используйте `APP_CONTRACT=gateway` и `APP_IDEMPOTENT=true`.

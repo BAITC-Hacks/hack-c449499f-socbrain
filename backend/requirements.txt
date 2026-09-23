@@ -1,2 +1,7 @@
 python-dotenv==1.0.1
 openai==1.109.1
+nvidia-riva-client==2.27.0
+fastapi==0.141.1
+uvicorn[standard]==0.53.0
+bcrypt==5.0.0
+python-multipart==0.0.32

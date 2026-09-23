@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Совещания · SOCBrain</title>
+<title>Совещания · Jinalys AI</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
 <nav class="side">
-  <div class="brand">SOCBrain<small>автопротоколирование совещаний</small></div>
+  <div class="brand">Jinalys AI<small>автопротоколирование совещаний</small></div>
 
   <a href="index.html">Дашборд</a>
   <a href="meetings.html" class="on">Совещания</a>
@@ -18,8 +18,8 @@
   <div class="bottom">
     <a href="settings.html">Настройки</a>
     <div class="who">
-      <span>Артём Е.</span>
-      <form method="get" action="login.html" class="inline"><button class="ghost">Выйти</button></form>
+      <span id="who-name">—</span>
+      <button class="ghost" id="logout-btn" type="button">Выйти</button>
     </div>
   </div>
 </nav>
@@ -27,6 +27,28 @@
 <main>
   <h1>Совещания</h1>
   <p class="sub">Найдено: 4 · всего в базе: 4</p>
+
+  <div class="note" style="margin-bottom:20px;">
+    <b>Загрузить и распознать</b> <span class="tag ok">реально, из backend</span>
+    <p class="sub" style="margin:6px 0 12px;">Дёргает <code>POST /api/transcribe</code> — нужен поднятый <code>uvicorn</code> и рабочий провайдер (сейчас — тот, что настроен в <code>.env</code> или в "Настройки → Распознавание речи и ИИ").</p>
+    <div class="toolbar">
+      <input type="file" id="upload-file" accept="audio/*,video/*">
+      <button type="button" id="upload-btn">Распознать</button>
+    </div>
+    <div id="upload-status" class="sub" style="margin-top:10px;"></div>
+    <div id="upload-result" style="display:none;margin-top:12px;">
+      <p class="sub">Язык: <span id="upload-lang"></span></p>
+      <pre id="upload-text" style="max-height:300px;overflow:auto;"></pre>
+      <button type="button" id="extract-btn">Извлечь поручения</button>
+      <div id="extract-status" class="sub" style="margin-top:10px;"></div>
+      <div class="scroll" id="extract-result" style="display:none;margin-top:10px;">
+        <table>
+          <tr><th>Ответственный</th><th>Срок</th><th class="wrap">Поручение</th></tr>
+          <tbody id="extract-rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
   <form method="get" class="filters">
     <div><label>с</label><input type="date" name="from"></div>
@@ -108,11 +130,95 @@
 
 </main>
 
-<footer>SOCBrain · каркас фронтенда, структура на основе внутреннего проекта aster_zapis</footer>
+<footer>Jinalys AI · каркас фронтенда, структура на основе внутреннего проекта aster_zapis</footer>
+<script src="js/api.js"></script>
 <script>
+document.getElementById("who-name").textContent = sessionStorage.getItem("socbrain_name") || "Артём Е.";
+document.getElementById("logout-btn").addEventListener("click", () => {
+  window.location.href = "login.html";
+});
 document.addEventListener("click", function (e) {
   var cell = e.target.closest("td.gist");
   if (cell) cell.classList.toggle("open");
+});
+
+let currentMeetingId = null;
+
+document.getElementById("upload-btn").addEventListener("click", async () => {
+  const fileInput = document.getElementById("upload-file");
+  const statusEl = document.getElementById("upload-status");
+  const resultEl = document.getElementById("upload-result");
+  const btn = document.getElementById("upload-btn");
+
+  if (!fileInput.files.length) {
+    statusEl.textContent = "Сначала выбери файл.";
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", fileInput.files[0]);
+
+  btn.disabled = true;
+  statusEl.textContent = "Распознаю — на длинной записи может занять минуту-другую...";
+  resultEl.style.display = "none";
+  document.getElementById("extract-result").style.display = "none";
+  document.getElementById("extract-status").textContent = "";
+
+  try {
+    const token = getToken();
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const res = await fetch(`${API_BASE}/api/transcribe`, { method: "POST", body: formData, headers });
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.detail || `Ошибка ${res.status}`);
+
+    currentMeetingId = data.meeting_id;
+    statusEl.textContent = `Готово · язык: ${data.language} · реплик: ${data.segments.length} · meeting_id: ${data.meeting_id}`;
+    document.getElementById("upload-lang").textContent = data.language;
+    document.getElementById("upload-text").textContent = data.text;
+    resultEl.style.display = "block";
+  } catch (err) {
+    statusEl.textContent = `Ошибка: ${err.message}`;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById("extract-btn").addEventListener("click", async () => {
+  const statusEl = document.getElementById("extract-status");
+  const resultEl = document.getElementById("extract-result");
+  const rowsEl = document.getElementById("extract-rows");
+  const btn = document.getElementById("extract-btn");
+
+  if (!currentMeetingId) {
+    statusEl.textContent = "Сначала распознай совещание.";
+    return;
+  }
+
+  btn.disabled = true;
+  statusEl.textContent = "Извлекаю поручения через LLM...";
+  resultEl.style.display = "none";
+
+  try {
+    const data = await apiFetch(`/api/meetings/${currentMeetingId}/extract-tasks`, { method: "POST" });
+    if (!data.tasks.length) {
+      statusEl.textContent = "Поручений не найдено в тексте.";
+      return;
+    }
+    rowsEl.innerHTML = data.tasks.map((t) => `
+      <tr>
+        <td>${t.assignee || "—"}</td>
+        <td class="muted">${t.deadline || "не указан"}</td>
+        <td class="wrap">${t.task || ""}</td>
+      </tr>
+    `).join("");
+    statusEl.textContent = `Найдено поручений: ${data.tasks.length}`;
+    resultEl.style.display = "block";
+  } catch (err) {
+    statusEl.textContent = `Ошибка: ${err.message}`;
+  } finally {
+    btn.disabled = false;
+  }
 });
 </script>
 </body>

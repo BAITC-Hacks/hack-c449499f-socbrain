@@ -1,8 +1,8 @@
-# Zoom Connector для SOCBrain
+# Zoom Connector для Jinalys AI
 
 Отдельный backend получает готовые Zoom Cloud Recordings, читает расписание пользователей и
 принимает Realtime Media Streams (RTMS) с живым аудио, транскриптом и именами участников.
-Готовые записи и завершённый RTMS WAV отправляются в общий [приёмник SOCBrain](../../backend/INGEST.md).
+Готовые записи и завершённый RTMS WAV отправляются в общий [приёмник Jinalys AI](../../backend/INGEST.md).
 
 ## Что реализовано
 
@@ -16,7 +16,7 @@
   включить RTMS auto-start в Zoom.
 - SQLite-очереди, идемпотентность, восстановление worker после перезапуска и Docker Compose.
 
-Cloud Recording и RTMS — независимые режимы. Если включить оба, SOCBrain может получить две записи
+Cloud Recording и RTMS — независимые режимы. Если включить оба, Jinalys AI может получить две записи
 одной встречи: облачную и созданную из RTMS. Поле `source` отличает `zoom-cloud` от `zoom-rtms`.
 
 ## Запуск
@@ -24,7 +24,7 @@ Cloud Recording и RTMS — независимые режимы. Если вкл
 ```sh
 cd integrations/zoom-connector
 python scripts/init_config.py
-# Заполните .env параметрами Zoom и SOCBrain.
+# Заполните .env параметрами Zoom и Jinalys AI.
 docker compose up -d --build connector worker
 ```
 

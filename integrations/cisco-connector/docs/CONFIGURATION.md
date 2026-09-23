@@ -36,7 +36,7 @@
 | APP_API_KEY | X-API-Key принимающего приложения, если нужен |
 | APP_CA_FILE | CA для HTTPS принимающего приложения |
 | APP_ALLOW_HTTP | Явное разрешение HTTP в изолированной сети; по умолчанию false |
-| APP_IDEMPOTENT | true только если получатель гарантирует Idempotency-Key; SOCBrain receiver поддерживает |
+| APP_IDEMPOTENT | true только если получатель гарантирует Idempotency-Key; Jinalys AI receiver поддерживает |
 
 В `.env.example` нет рабочих адресов. Параметры allowlist, уведомления и получателя проверяются
 при старте включённого worker. Контейнер API может работать без worker.

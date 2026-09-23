@@ -1,0 +1,36 @@
+name: cisco-connector
+on:
+  push:
+    paths: ['integrations/cisco-connector/**', 'backend/**', '.github/workflows/cisco-connector.yml']
+  pull_request:
+    paths: ['integrations/cisco-connector/**', 'backend/**', '.github/workflows/cisco-connector.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r integrations/cisco-connector/requirements.txt -r integrations/cisco-connector/requirements-dev.txt
+      - run: python -m pytest tests -q
+        working-directory: integrations/cisco-connector
+      - run: python -m pytest tests -q
+        working-directory: backend
+      - run: python scripts/init_ingest.py
+        working-directory: backend
+      - run: docker compose -f compose.ingest.yml --profile stt build --quiet
+        working-directory: backend
+  sip:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: integrations/cisco-connector
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/init_config.py
+      - run: docker compose --profile assistant build --quiet
+      - run: docker compose run --rm -v "$PWD/tests:/tests:ro" assistant python /tests/sip_smoke.py

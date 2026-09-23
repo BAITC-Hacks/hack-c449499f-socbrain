@@ -82,6 +82,44 @@ def chat_json(system: str, user: str, schema: dict, name: str = "result") -> dic
         raise LLMError(f"{type(exc).__name__}: {exc}") from exc
 
 
+def check() -> dict:
+    """Проверка подключения для страницы настроек: доступность, ключ, наличие модели, пробный запрос.
+
+    Пробный запрос — короткий синтетический текст, не данные совещаний.
+    """
+    result = {"provider": settings.llm_provider, "base_url": settings.llm_base_url, "model": settings.llm_model,
+              "external": settings.llm_external, "key_env": settings.llm_api_key_env,
+              "key_set": bool(settings.llm_api_key), "reachable": False, "model_listed": None,
+              "models": [], "structured_ok": False, "error": None}
+    if settings.llm_provider == "none":
+        result["error"] = "LLM отключена (LLM_PROVIDER=none)"
+        return result
+    if settings.llm_requires_key and not settings.llm_api_key:
+        result["error"] = f"Не задан ключ: впишите {settings.llm_api_key_env}=… в backend/.env и перезапустите worker"
+        return result
+    headers = {"Authorization": f"Bearer {settings.llm_api_key}"} if settings.llm_api_key else {}
+    try:
+        response = httpx.get(f"{settings.llm_base_url}/models", headers=headers, timeout=20)
+        result["reachable"] = response.status_code == 200
+        if response.status_code in (401, 403):
+            result["error"] = "Ключ отклонён провайдером (401/403)"
+            return result
+        ids = sorted(m.get("id", "") for m in response.json().get("data", []))
+        result["models"] = ids[:300]
+        result["model_listed"] = settings.llm_model in ids if ids else None
+    except (httpx.HTTPError, ValueError) as exc:
+        result["error"] = f"Сервер недоступен: {exc}"
+        return result
+    try:
+        answer = chat_json("Ответь по схеме.", "Поручение: подготовить отчёт, ответственный Иванов, срок пятница.",
+                           {"type": "object", "properties": {"assignee": {"type": "string"}},
+                            "required": ["assignee"]}, "check")
+        result["structured_ok"] = bool(answer.get("assignee"))
+    except LLMError as exc:
+        result["error"] = f"Пробный запрос не прошёл: {exc}"
+    return result
+
+
 def available() -> bool:
     if settings.llm_provider == "none":
         return False

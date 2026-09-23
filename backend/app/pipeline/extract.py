@@ -163,6 +163,31 @@ def canonical_name(name: str, participants: list[str]) -> str:
     return best if _similar(name, best) >= 0.7 else name
 
 
+def fix_names(text: str, participants: list[str]) -> str:
+    """Исправить в стенограмме имена участников, искажённые распознаванием: «Тимур Булотович» -> «Тимур Болатович».
+
+    Заменяется только последовательность слов той же длины, что и имя из карточки (±1 буква на слово):
+    так падежные формы («с Нурланом Сагатовичем») не превращаются в именительный падеж.
+    """
+    names = [p.split("—")[0].split(" - ")[0].split() for p in participants]
+    words = list(re.finditer(r"[\wәғқңөұүһі]+", text, flags=re.IGNORECASE))
+    replacements = []
+    for name in (n for n in names if len(n) >= 2):
+        for i in range(len(words) - len(name) + 1):
+            window = words[i:i + len(name)]
+            spoken = [w.group(0) for w in window]
+            if [s.lower() for s in spoken] == [n.lower() for n in name]:
+                if spoken != name:
+                    replacements.append((window[0].start(), window[-1].end(), " ".join(name)))
+                continue
+            if all(abs(len(s) - len(n)) <= 1 and s[0].lower() == n[0].lower() and _similar(s, n) >= 0.75
+                   for s, n in zip(spoken, name)):
+                replacements.append((window[0].start(), window[-1].end(), " ".join(name)))
+    for start, end, value in sorted(replacements, reverse=True):
+        text = text[:start] + value + text[end:]
+    return text
+
+
 def _participants_hint(participants: list[str]) -> str:
     if not participants:
         return ""

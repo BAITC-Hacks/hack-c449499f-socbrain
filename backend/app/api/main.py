@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .. import db
-from ..config import settings
+from ..config import LLM_PRESETS, is_external_url, settings
 from ..export import docx_export, pdf_export
 
 # Фронтенд лежит в корне репозитория (frontend/); в Docker-образе — /srv/frontend.
@@ -46,6 +46,28 @@ def public_config() -> dict:
             "llm_external": settings.llm_external and settings.llm_provider != "none",
             "stt_provider": stt, "stt_external": stt == "external",
             "whisper_model": settings.whisper_model if stt == "local" else "whisper-1"}
+
+
+@app.get("/api/llm/providers")
+def llm_providers() -> dict:
+    """Шаблоны подключения LLM для страницы настроек. Значения ключей не отдаются — только задан ли ключ."""
+    return {
+        "active": settings.llm_provider,
+        "active_base_url": settings.llm_base_url,
+        "active_model": settings.llm_model,
+        "active_external": settings.llm_external,
+        "presets": [{**{k: v for k, v in preset.items()}, "id": pid,
+                     "external": is_external_url(preset["base_url"]) and pid != "none",
+                     "key_set": bool(os.getenv(preset["key_env"]))}
+                    for pid, preset in LLM_PRESETS.items()],
+    }
+
+
+@app.post("/api/llm/check")
+def llm_check() -> dict:
+    """Проверить текущее подключение LLM: адрес, ключ, модель, структурированный ответ."""
+    from ..pipeline import llm
+    return llm.check()
 
 
 @app.get("/api/stats")

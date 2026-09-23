@@ -3,13 +3,41 @@ import os
 from pathlib import Path
 from urllib.parse import urlparse
 
+# Шаблоны подключения LLM. Все провайдеры — OpenAI-совместимый /chat/completions,
+# поэтому новый = ещё одна запись здесь; код клиента не меняется.
 LLM_PRESETS = {
-    "openai": {"base_url": "https://api.openai.com/v1", "key_env": "OPENAI_API_KEY", "model": "gpt-4.1-mini"},
-    "nvidia": {"base_url": "https://integrate.api.nvidia.com/v1", "key_env": "NVIDIA_API_KEY",
-               "model": "meta/llama-3.3-70b-instruct"},
-    "ollama": {"base_url": "http://ollama:11434/v1", "key_env": "OLLAMA_API_KEY", "model": "qwen2.5:3b"},
-    "vllm": {"base_url": "http://vllm:8000/v1", "key_env": "VLLM_API_KEY", "model": "Qwen/Qwen2.5-7B-Instruct"},
-    "none": {"base_url": "http://localhost/v1", "key_env": "LLM_API_KEY", "model": ""},
+    "nvidia": {
+        "title": "NVIDIA API Catalog / NIM",
+        "base_url": "https://integrate.api.nvidia.com/v1", "key_env": "NVIDIA_API_KEY",
+        "model": "meta/llama-3.3-70b-instruct",
+        "note": "Облако build.nvidia.com (ключ nvapi-…) — для разработки. Та же модель в контуре: "
+                "контейнер NVIDIA NIM на своём GPU-сервере, LLM_BASE_URL=http://<сервер>:8000/v1.",
+        "docs": "https://build.nvidia.com",
+    },
+    "openai": {
+        "title": "OpenAI",
+        "base_url": "https://api.openai.com/v1", "key_env": "OPENAI_API_KEY", "model": "gpt-4.1-mini",
+        "note": "Облако — только для разработки на синтетических записях.",
+        "docs": "https://platform.openai.com",
+    },
+    "ollama": {
+        "title": "Ollama (локально)",
+        "base_url": "http://ollama:11434/v1", "key_env": "OLLAMA_API_KEY", "model": "qwen2.5:3b",
+        "note": "Контейнер из docker-compose: docker compose --profile local-llm up -d. Нужно от 8 ГБ RAM.",
+        "docs": "https://ollama.com",
+    },
+    "vllm": {
+        "title": "vLLM (локально)",
+        "base_url": "http://vllm:8000/v1", "key_env": "VLLM_API_KEY", "model": "Qwen/Qwen2.5-7B-Instruct",
+        "note": "Свой GPU-сервер в контуре; адрес — LLM_BASE_URL.",
+        "docs": "https://docs.vllm.ai",
+    },
+    "none": {
+        "title": "Без LLM",
+        "base_url": "http://localhost/v1", "key_env": "LLM_API_KEY", "model": "",
+        "note": "Поручения только по шаблону «…, ответственный X, срок Y», без саммари.",
+        "docs": "",
+    },
 }
 
 
@@ -36,7 +64,8 @@ class Settings:
     llm_base_url = _env("LLM_BASE_URL", LLM_PRESETS.get(llm_provider, LLM_PRESETS["ollama"])["base_url"]).rstrip("/")
     llm_api_key_env = _env("LLM_API_KEY_ENV", LLM_PRESETS.get(llm_provider, {}).get("key_env", "LLM_API_KEY"))
     llm_api_key = os.getenv(llm_api_key_env, "")
-    llm_requires_key = llm_provider in ("openai", "nvidia")
+    # Облачным адресам нужен ключ; NIM/vLLM в своём контуре обычно без него.
+    llm_requires_key = llm_provider in ("openai", "nvidia") and not os.getenv("LLM_BASE_URL")
     llm_model = _env("LLM_MODEL", LLM_PRESETS.get(llm_provider, LLM_PRESETS["ollama"])["model"])
     llm_temperature = float(os.environ["LLM_TEMPERATURE"]) if os.getenv("LLM_TEMPERATURE") else None
     llm_timeout = float(_env("LLM_TIMEOUT", "900"))
@@ -44,13 +73,7 @@ class Settings:
     @property
     def llm_external(self) -> bool:
         """Уходит ли текст за пределы контура (облачный API)."""
-        host = urlparse(self.llm_base_url).hostname or ""
-        if "." not in host or host == "localhost" or host.endswith((".local", ".internal", ".lan")):
-            return False
-        try:
-            return not ipaddress.ip_address(host).is_private
-        except ValueError:
-            return True
+        return is_external_url(self.llm_base_url)
 
     remind_days_before = int(_env("REMIND_DAYS_BEFORE", "2"))
 
@@ -65,6 +88,17 @@ class Settings:
     @property
     def work_dir(self) -> Path:
         return self.data_dir / "work"
+
+
+def is_external_url(url: str) -> bool:
+    """Признак вычисляется по адресу, а не задаётся переключателем: администратор ошибётся, адрес не соврёт."""
+    host = urlparse(url).hostname or ""
+    if "." not in host or host == "localhost" or host.endswith((".local", ".internal", ".lan")):
+        return False
+    try:
+        return not ipaddress.ip_address(host).is_private
+    except ValueError:
+        return True
 
 
 settings = Settings()

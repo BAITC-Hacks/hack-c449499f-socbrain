@@ -2,7 +2,7 @@ import unittest
 
 from app.pipeline.align import to_utterances
 from app.pipeline.diarization import Turn, merge_minor_speakers
-from app.pipeline.extract import canonical_name, match_speaker, rule_based_tasks
+from app.pipeline.extract import canonical_name, fix_names, match_speaker, rule_based_tasks
 from app.stt import TranscriptWord
 
 
@@ -39,6 +39,15 @@ class NamesTest(unittest.TestCase):
     def test_asr_typo_fixed_by_participant_card(self):
         self.assertEqual(canonical_name("Тимур Булотович", self.PARTICIPANTS), "Тимур Болатович")
         self.assertEqual(canonical_name("Нурлан Согатович", self.PARTICIPANTS), "Нурлан Сагатович")
+
+    def test_fix_names_in_transcript(self):
+        text = "Понятно. Тимур Булотович, что у вас? Нурлан Согатович, а по площадкам?"
+        self.assertEqual(fix_names(text, self.PARTICIPANTS),
+                         "Понятно. Тимур Болатович, что у вас? Нурлан Сагатович, а по площадкам?")
+
+    def test_fix_names_keeps_inflected_forms(self):
+        text = "Свяжитесь с Нурланом Сагатовичем на этой неделе."
+        self.assertEqual(fix_names(text, self.PARTICIPANTS), text)
 
     def test_department_is_not_forced_to_a_person(self):
         self.assertEqual(canonical_name("юридический департамент", self.PARTICIPANTS), "юридический департамент")

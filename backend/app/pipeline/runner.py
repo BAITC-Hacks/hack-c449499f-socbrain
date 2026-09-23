@@ -28,7 +28,10 @@ def stt_prompt(meeting: dict) -> str:
 
 
 def _analyze_and_save(meeting: dict, utterances: list[dict], language: str, duration: float) -> None:
-    result = extract.analyze(utterances, date.fromisoformat(meeting["meeting_date"]), participant_names(meeting))
+    participants = participant_names(meeting)
+    for u in utterances:
+        u["text"] = extract.fix_names(u["text"], participants)
+    result = extract.analyze(utterances, date.fromisoformat(meeting["meeting_date"]), participants)
     db.save_result(meeting["id"], language=language, duration=duration, segments=utterances, **result)
     log.info("meeting %s done: %d utterances, %d tasks, llm=%s",
              meeting["id"], len(utterances), len(result["tasks"]), result["llm_used"])

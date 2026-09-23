@@ -288,7 +288,75 @@ async function pageTasks() {
   document.getElementById("list").innerHTML = shown.length ? tasksTable(shown, true) : '<p class="sub">Поручений не найдено.</p>';
 }
 
-const PAGES = { dashboard: pageDashboard, meetings: pageMeetings, meeting: pageMeeting, tasks: pageTasks };
+// ---------------------------------------------------------------- настройки → распознавание речи и ИИ
+const placeTag = (external) => external ? '<span class="tag bad">внешняя</span>' : '<span class="tag ok">локальная</span>';
+
+function presetEnv(p) {
+  const lines = [`LLM_PROVIDER=${p.id}`];
+  if (p.model) lines.push(`LLM_MODEL=${p.model}`);
+  if (p.id === "ollama" || p.id === "vllm") lines.push(`LLM_BASE_URL=${p.base_url}`);
+  if (p.external) lines.push(`${p.key_env}=${p.id === "nvidia" ? "nvapi-…" : "…"}`);
+  return lines.join("\n");
+}
+
+async function pageSettings() {
+  // Открыть нужную вкладку по ссылке settings.html#int-ai
+  const tab = location.hash && document.querySelector(`[data-tab-target="${location.hash.slice(1)}"]`);
+  if (tab) tab.click();
+  if (!document.getElementById("ai-models")) return;
+
+  const [cfg, llmInfo] = await Promise.all([api("/api/config"), api("/api/llm/providers")]);
+  const active = llmInfo.presets.find((p) => p.id === llmInfo.active) || {};
+  document.getElementById("ai-models").innerHTML = `<div class="scroll"><table>
+    <tr><th class="wrap">Модель</th><th>Назначение</th><th>Расположение</th></tr>
+    <tr><td>${cfg.stt_external ? "OpenAI Whisper API" : "faster-whisper " + esc(cfg.whisper_model)}</td>
+        <td>распознавание речи (STT)</td><td>${placeTag(cfg.stt_external)}</td></tr>
+    <tr><td>sherpa-onnx: pyannote-3.0 + 3D-Speaker</td><td>диаризация — кто говорит</td><td>${placeTag(false)}</td></tr>
+    <tr><td>${esc(llmInfo.active_model || "—")} <span class="muted">(${esc(active.title || llmInfo.active)})</span></td>
+        <td>анализ стенограммы: поручения, саммари</td>
+        <td>${llmInfo.active === "none" ? '<span class="tag">отключена</span>' : placeTag(llmInfo.active_external)}</td></tr>
+  </table></div>`;
+
+  document.getElementById("ai-llm").innerHTML = `<div class="scroll"><table>
+    <tr><td>Провайдер</td><td><b>${esc(active.title || llmInfo.active)}</b> <code>LLM_PROVIDER=${esc(llmInfo.active)}</code></td></tr>
+    <tr><td>Адрес</td><td><code>${esc(llmInfo.active_base_url)}</code> ${placeTag(llmInfo.active_external)}</td></tr>
+    <tr><td>Модель</td><td><code>${esc(llmInfo.active_model || "—")}</code></td></tr>
+    <tr><td>Ключ</td><td>${active.external && !active.key_set && llmInfo.active_external
+      ? `<span class="tag bad">не задан</span> впишите <code>${esc(active.key_env)}</code> в backend/.env`
+      : active.key_set ? `<span class="tag ok">задан</span> <code>${esc(active.key_env)}</code>` : '<span class="tag">не требуется</span>'}</td></tr>
+  </table></div>`;
+
+  document.getElementById("ai-presets").innerHTML = `<div class="grid2">${llmInfo.presets.map((p) => `
+    <div class="card">
+      <div class="n" style="font-size:17px">${esc(p.title)} ${p.id === llmInfo.active ? '<span class="tag ok">активен</span>' : ""}</div>
+      <div class="l">${placeTag(p.external)} ${p.external ? (p.key_set ? '<span class="tag ok">ключ задан</span>' : '<span class="tag">ключ не задан</span>') : ""}</div>
+      <p class="sub" style="margin:8px 0">${esc(p.note)}${p.docs ? ` <a href="${esc(p.docs)}" target="_blank" rel="noopener">документация</a>` : ""}</p>
+      <pre style="margin:0">${esc(presetEnv(p))}</pre>
+    </div>`).join("")}</div>`;
+
+  document.getElementById("ai-check").onclick = async () => {
+    const msg = document.getElementById("ai-check-msg");
+    const out = document.getElementById("ai-check-result");
+    msg.textContent = "Проверяю…"; out.innerHTML = "";
+    try {
+      const r = await api("/api/llm/check", { method: "POST" });
+      const ok = r.reachable && r.structured_ok;
+      msg.textContent = "";
+      const mark = (v) => v === null ? '<span class="tag">—</span>' : v ? '<span class="tag ok">да</span>' : '<span class="tag bad">нет</span>';
+      out.innerHTML = `<div class="note ${ok ? "ok" : "bad"}">${ok ? "Подключение работает: модель отвечает по JSON-схеме." : esc(r.error || "Подключение не работает")}</div>
+        <div class="scroll"><table>
+          <tr><td>Сервер отвечает</td><td>${mark(r.reachable)}</td></tr>
+          <tr><td>Модель <code>${esc(r.model)}</code> есть в списке провайдера</td><td>${mark(r.model_listed)}</td></tr>
+          <tr><td>Структурированный ответ (пробный синтетический запрос)</td><td>${mark(r.structured_ok)}</td></tr>
+        </table></div>
+        ${r.models.length ? `<details style="margin-top:10px"><summary class="muted">Доступные модели (${r.models.length})</summary>
+          <pre>${esc(r.models.join("\n"))}</pre></details>` : ""}`;
+    } catch (err) { msg.textContent = err.message; }
+  };
+}
+
+const PAGES = { dashboard: pageDashboard, meetings: pageMeetings, meeting: pageMeeting, tasks: pageTasks,
+                settings: pageSettings };
 document.addEventListener("DOMContentLoaded", () => {
   const page = PAGES[document.body.dataset.page];
   if (!page) return;
